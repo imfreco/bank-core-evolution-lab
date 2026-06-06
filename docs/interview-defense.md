@@ -54,7 +54,7 @@ Usaría ALB o API Gateway en la entrada, EKS o ECS para cómputo, RDS PostgreSQL
 
 ## 14. ¿Qué mejorarías para producción?
 
-- Reemplazar Basic Auth por OAuth2/OIDC y JWT firmado.
+- Reemplazar JWT demo local por OAuth2/OIDC y JWT firmado por un proveedor de identidad.
 - Validar ownership del cliente antes de retornar datos de customer/account/movement.
 - Agregar mTLS entre servicios internos.
 - Agregar rate limiting, validaciones antifraude y autorización más fuerte.
@@ -67,7 +67,7 @@ TODO production-grade: validar ownership del cliente autenticado antes de retorn
 
 ## 15. ¿Qué trade-offs tiene esta solución?
 
-El diseño prioriza claridad y valor para entrevista sobre complejidad productiva completa. Basic Auth es intencionalmente simple. La proyección MongoDB es eventualmente consistente. El publicador outbox es simulado. El bloqueo pesimista mejora la seguridad sobre saldos, pero puede reducir throughput bajo alta contención.
+El diseño prioriza claridad y valor para entrevista sobre complejidad productiva completa. El login JWT consulta usuarios persistidos en PostgreSQL y compara passwords contra hashes bcrypt, pero sigue siendo una autenticación de laboratorio y no reemplaza OAuth2/OIDC en producción. La proyección MongoDB es eventualmente consistente. El publicador outbox es simulado. El bloqueo pesimista mejora la seguridad sobre saldos, pero puede reducir throughput bajo alta contención.
 
 ## Elevator Pitch Del Proyecto En 90 Segundos
 

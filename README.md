@@ -89,7 +89,7 @@ Los diagramas detallados están en [docs/architecture.md](docs/architecture.md).
 - Modelo de lectura en MongoDB para historial de movimientos por cliente.
 - Correlation ID con logs MDC.
 - Health checks y métricas con Actuator.
-- Seguridad demo con Basic Auth y roles.
+- Seguridad demo con login JWT y roles.
 - Entorno local con Docker Compose.
 - Manifiestos Kubernetes con probes, resources y HPA.
 - Notas de despliegue conceptual en AWS.
@@ -125,12 +125,60 @@ Swagger UI:
 http://localhost:8080/swagger-ui.html
 ```
 
+Para consumir endpoints protegidos desde Swagger UI:
+
+1. Ejecuta `POST /api/v1/auth/login` con una de las credenciales demo.
+2. Copia el campo `accessToken` de la respuesta.
+3. Presiona el botón `Authorize`.
+4. Pega el token en el esquema `bearerAuth`.
+5. Ejecuta el endpoint normalmente desde `Try it out`.
+
+Todos los endpoints de negocio requieren el header:
+
+```text
+Authorization: Bearer <accessToken>
+```
+
 ## Credenciales Demo
+
+Estas credenciales se siembran por Flyway en las tablas `auth_users` y `auth_user_roles`. Las contraseñas no se guardan en claro: quedan persistidas como hashes bcrypt.
 
 ```text
 customer / customer123
 operator / operator123
 admin    / admin123
+```
+
+## Login JWT
+
+Autenticar:
+
+```http
+POST /api/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "customer",
+  "password": "customer123"
+}
+```
+
+Respuesta resumida:
+
+```json
+{
+  "accessToken": "<jwt>",
+  "tokenType": "Bearer",
+  "expiresInSeconds": 3600,
+  "username": "customer",
+  "roles": ["CUSTOMER"]
+}
+```
+
+Consumir endpoints protegidos:
+
+```http
+Authorization: Bearer <jwt>
 ```
 
 Roles:
@@ -139,7 +187,7 @@ Roles:
 - `ROLE_OPERATOR`: puede bloquear cuentas y consultar auditoría.
 - `ROLE_ADMIN`: acceso administrativo.
 
-Nota de producción: Basic Auth es intencionalmente limitado. Una implementación bancaria debería evolucionar a OAuth2/OIDC, JWT firmado, scopes/claims, validación de ownership por cliente, mTLS, Secrets Manager, cifrado, WAF y rate limiting.
+Nota de producción: este JWT es una implementación demo firmada con HMAC local. Una implementación bancaria debería evolucionar a OAuth2/OIDC, JWT firmado por un IdP, scopes/claims, validación de ownership por cliente, mTLS, Secrets Manager, rotación de secretos, cifrado, WAF y rate limiting.
 
 ## Datos Iniciales
 
@@ -197,6 +245,7 @@ Los ejemplos listos para IntelliJ HTTP Client o VS Code REST Client están en [d
 
 Cubren:
 
+- Login JWT.
 - Crear cliente.
 - Consultar cliente y productos.
 - Crear cuenta.
@@ -216,6 +265,8 @@ Cubren:
 POST /api/v1/customers
 GET  /api/v1/customers/{customerId}
 GET  /api/v1/customers/{customerId}/products
+
+POST /api/v1/auth/login
 
 POST /api/v1/accounts
 GET  /api/v1/accounts/{accountId}

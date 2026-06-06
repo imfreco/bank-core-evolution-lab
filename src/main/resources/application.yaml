@@ -46,6 +46,10 @@ springdoc:
     path: /swagger-ui.html
 
 bank:
+  security:
+    jwt:
+      secret: ${BANK_SECURITY_JWT_SECRET:bank-core-evolution-lab-demo-secret-change-me}
+      expiration-seconds: ${BANK_SECURITY_JWT_EXPIRATION_SECONDS:3600}
   outbox:
     publisher:
       enabled: ${BANK_OUTBOX_PUBLISHER_ENABLED:true}

@@ -2,7 +2,6 @@ package com.imfreco.bank_core_evolution_lab.transfer.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -10,8 +9,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.imfreco.bank_core_evolution_lab.common.security.AuthenticatedUser;
+import com.imfreco.bank_core_evolution_lab.common.security.JwtService;
 import com.imfreco.bank_core_evolution_lab.outbox.domain.OutboxEventStatus;
 import com.imfreco.bank_core_evolution_lab.outbox.infrastructure.OutboxEventRepository;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,6 +57,8 @@ class TransferControllerIT {
 
     @Autowired ObjectMapper objectMapper;
 
+    @Autowired JwtService jwtService;
+
     @Autowired OutboxEventRepository outboxEventRepository;
 
     @Test
@@ -72,7 +76,7 @@ class TransferControllerIT {
 
         mockMvc.perform(
                         get("/api/v1/accounts/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/movements")
-                                .with(httpBasic("customer", "customer123")))
+                                .header("Authorization", bearerToken("customer", "CUSTOMER")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(
@@ -104,7 +108,7 @@ class TransferControllerIT {
 
         mockMvc.perform(
                         post("/api/v1/transfers")
-                                .with(httpBasic("customer", "customer123"))
+                                .header("Authorization", bearerToken("customer", "CUSTOMER"))
                                 .header("Idempotency-Key", UUID.randomUUID().toString())
                                 .header("X-Correlation-ID", "it-correlation")
                                 .contentType("application/json")
@@ -157,10 +161,14 @@ class TransferControllerIT {
 
         return mockMvc.perform(
                 post("/api/v1/transfers")
-                        .with(httpBasic("customer", "customer123"))
+                        .header("Authorization", bearerToken("customer", "CUSTOMER"))
                         .header("Idempotency-Key", idempotencyKey)
                         .header("X-Correlation-ID", "it-correlation")
                         .contentType("application/json")
                         .content(body));
+    }
+
+    private String bearerToken(String username, String role) {
+        return "Bearer " + jwtService.generateToken(new AuthenticatedUser(username, List.of(role)));
     }
 }

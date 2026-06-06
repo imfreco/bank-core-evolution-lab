@@ -66,6 +66,17 @@ public class GlobalExceptionHandler {
                 List.of());
     }
 
+    @ExceptionHandler(AuthenticationFailedException.class)
+    ResponseEntity<ErrorResponse> handleAuthentication(
+            AuthenticationFailedException exception, HttpServletRequest request) {
+        return build(
+                HttpStatus.UNAUTHORIZED,
+                exception.errorCode(),
+                exception.getMessage(),
+                request,
+                List.of());
+    }
+
     @ExceptionHandler({
         AccountBlockedException.class,
         CurrencyMismatchException.class,

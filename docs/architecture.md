@@ -8,6 +8,7 @@ Este documento resume la arquitectura técnica de `bank-core-evolution-lab` y la
 flowchart LR
     Consumer["Cliente / Consumidor API"]
     API["Spring Boot API<br/>REST, Validación, Seguridad"]
+    Auth["Auth JWT<br/>auth_users / auth_user_roles"]
     Transfer["Servicios de Aplicación<br/>Transfer, Account, Customer"]
     PostgreSQL["PostgreSQL<br/>Fuente de Verdad"]
     Outbox["Tabla outbox_events"]
@@ -18,7 +19,9 @@ flowchart LR
     AWS["Destino conceptual AWS<br/>ALB/API Gateway, EKS/ECS, RDS, SQS/SNS"]
 
     Consumer --> API
+    API --> Auth
     API --> Transfer
+    Auth --> PostgreSQL
     Transfer --> PostgreSQL
     Transfer --> Outbox
     Outbox --> Publisher
@@ -145,6 +148,6 @@ Evolución productiva:
 
 - Reemplazar los manifiestos locales de PostgreSQL por RDS PostgreSQL Multi-AZ.
 - Reemplazar los manifiestos locales de MongoDB por MongoDB Atlas o DocumentDB.
-- Reemplazar Basic Auth demo por OAuth2/OIDC y JWT.
+- Reemplazar JWT demo local por OAuth2/OIDC con un proveedor de identidad.
 - Reemplazar el publicador outbox simulado por Kafka, SQS/SNS, RabbitMQ o MSK.
 - Agregar tracing centralizado, alertas, dashboards y runbooks.

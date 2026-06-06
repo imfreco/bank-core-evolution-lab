@@ -1,20 +1,20 @@
 @baseUrl = http://localhost:8080
-@customerAuth = Basic Y3VzdG9tZXI6Y3VzdG9tZXIxMjM=
-@operatorAuth = Basic b3BlcmF0b3I6b3BlcmF0b3IxMjM=
-@adminAuth = Basic YWRtaW46YWRtaW4xMjM=
+@customerToken = pega-aqui-el-accessToken-del-login-customer
+@operatorToken = pega-aqui-el-accessToken-del-login-operator
+@adminToken = pega-aqui-el-accessToken-del-login-admin
 @sourceAccountId = aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
 
 ### Consultar todos los logs de auditoría como admin
 GET {{baseUrl}}/api/v1/audit-logs
-Authorization: {{adminAuth}}
+Authorization: Bearer {{adminToken}}
 X-Correlation-ID: http-audit-all-001
 
 ### Consultar logs de auditoría de transferencias como admin
 GET {{baseUrl}}/api/v1/audit-logs?entityType=Transfer
-Authorization: {{adminAuth}}
+Authorization: Bearer {{adminToken}}
 X-Correlation-ID: http-audit-transfer-001
 
 ### Consultar logs de auditoría de cuenta como operador
 GET {{baseUrl}}/api/v1/audit-logs?entityType=Account&entityId={{sourceAccountId}}
-Authorization: {{operatorAuth}}
+Authorization: Bearer {{operatorToken}}
 X-Correlation-ID: http-audit-account-001

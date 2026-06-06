@@ -1,0 +1,41 @@
+@baseUrl = http://localhost:8080
+
+### Login como customer
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+X-Correlation-ID: http-login-customer-001
+
+{
+  "username": "customer",
+  "password": "customer123"
+}
+
+### Login como operator
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+X-Correlation-ID: http-login-operator-001
+
+{
+  "username": "operator",
+  "password": "operator123"
+}
+
+### Login como admin
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+X-Correlation-ID: http-login-admin-001
+
+{
+  "username": "admin",
+  "password": "admin123"
+}
+
+### Login inválido
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+X-Correlation-ID: http-login-invalid-001
+
+{
+  "username": "customer",
+  "password": "wrong-password"
+}
