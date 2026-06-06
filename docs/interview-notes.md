@@ -1,4 +1,4 @@
-# Interview Notes
+# Notas de Entrevista
 
 ## @Transactional
 
@@ -16,7 +16,7 @@ Bloquea filas durante la transacción. En transferencias se usa `PESSIMISTIC_WRI
 
 Permite repetir una operación sin repetir su efecto. `Idempotency-Key` + hash del body evita doble débito y detecta reutilización peligrosa de la misma key con otro payload.
 
-## Outbox Pattern
+## Patrón Outbox
 
 Guarda eventos en una tabla dentro de la misma transacción de negocio. Un publisher asíncrono los publica después. Evita el problema de confirmar DB pero fallar al publicar el evento.
 

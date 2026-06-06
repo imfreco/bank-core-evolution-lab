@@ -12,9 +12,6 @@ import com.imfreco.bank_core_evolution_lab.movement.web.CustomerMovementViewResp
 import com.imfreco.bank_core_evolution_lab.movement.web.MovementResponse;
 import com.imfreco.bank_core_evolution_lab.transfer.domain.Transfer;
 import com.imfreco.bank_core_evolution_lab.transfer.infrastructure.TransferRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
@@ -22,6 +19,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class MovementService {
@@ -32,9 +31,12 @@ public class MovementService {
     private final TransferRepository transferRepository;
     private final MovementProjectionService movementProjectionService;
 
-    public MovementService(MovementRepository movementRepository, AccountRepository accountRepository,
-                           CustomerRepository customerRepository, TransferRepository transferRepository,
-                           MovementProjectionService movementProjectionService) {
+    public MovementService(
+            MovementRepository movementRepository,
+            AccountRepository accountRepository,
+            CustomerRepository customerRepository,
+            TransferRepository transferRepository,
+            MovementProjectionService movementProjectionService) {
         this.movementRepository = movementRepository;
         this.accountRepository = accountRepository;
         this.customerRepository = customerRepository;
@@ -42,17 +44,21 @@ public class MovementService {
         this.movementProjectionService = movementProjectionService;
     }
 
-    public Movement create(Account account, UUID transferId, MovementType type,
-                           java.math.BigDecimal amount, String description) {
-        return movementRepository.save(new Movement(
-                account.getId(),
-                transferId,
-                type,
-                amount,
-                account.getCurrency(),
-                account.getAvailableBalance(),
-                description
-        ));
+    public Movement create(
+            Account account,
+            UUID transferId,
+            MovementType type,
+            java.math.BigDecimal amount,
+            String description) {
+        return movementRepository.save(
+                new Movement(
+                        account.getId(),
+                        transferId,
+                        type,
+                        amount,
+                        account.getCurrency(),
+                        account.getAvailableBalance(),
+                        description));
     }
 
     @Transactional(readOnly = true)
@@ -68,13 +74,15 @@ public class MovementService {
         if (!customerRepository.existsById(customerId)) {
             throw new CustomerNotFoundException(customerId);
         }
-        return movementProjectionService.findView(customerId)
-                .orElseGet(() -> new CustomerMovementViewResponse(
-                        customerId,
-                        findByCustomerFromSql(customerId),
-                        Instant.now(),
-                        "SQL_FALLBACK"
-                ));
+        return movementProjectionService
+                .findView(customerId)
+                .orElseGet(
+                        () ->
+                                new CustomerMovementViewResponse(
+                                        customerId,
+                                        findByCustomerFromSql(customerId),
+                                        Instant.now(),
+                                        "SQL_FALLBACK"));
     }
 
     @Transactional(readOnly = true)
@@ -88,10 +96,14 @@ public class MovementService {
     }
 
     public List<MovementResponse> toResponses(Collection<Movement> movements) {
-        Map<UUID, Transfer> transfers = transferRepository.findAllById(
-                        movements.stream().map(Movement::getTransferId).collect(Collectors.toSet()))
-                .stream()
-                .collect(Collectors.toMap(Transfer::getId, Function.identity()));
+        Map<UUID, Transfer> transfers =
+                transferRepository
+                        .findAllById(
+                                movements.stream()
+                                        .map(Movement::getTransferId)
+                                        .collect(Collectors.toSet()))
+                        .stream()
+                        .collect(Collectors.toMap(Transfer::getId, Function.identity()));
         return movements.stream()
                 .map(movement -> toResponse(movement, transfers.get(movement.getTransferId())))
                 .toList();
@@ -107,7 +119,6 @@ public class MovementService {
                 movement.getCurrency(),
                 movement.getBalanceAfterMovement(),
                 movement.getDescription(),
-                movement.getCreatedAt()
-        );
+                movement.getCreatedAt());
     }
 }

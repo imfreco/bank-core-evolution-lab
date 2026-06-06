@@ -10,6 +10,4 @@ public record ErrorResponse(
         String message,
         String path,
         String correlationId,
-        List<FieldErrorDetail> details
-) {
-}
+        List<FieldErrorDetail> details) {}

@@ -1,0 +1,41 @@
+@baseUrl = http://localhost:8080
+@customerAuth = Basic Y3VzdG9tZXI6Y3VzdG9tZXIxMjM=
+@operatorAuth = Basic b3BlcmF0b3I6b3BlcmF0b3IxMjM=
+@adminAuth = Basic YWRtaW46YWRtaW4xMjM=
+@seedCustomerId = 11111111-1111-1111-1111-111111111111
+@sourceAccountId = aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+@blockedAccountId = cccccccc-cccc-cccc-cccc-cccccccccccc
+
+### Crear cuenta
+POST {{baseUrl}}/api/v1/accounts
+Authorization: {{operatorAuth}}
+Content-Type: application/json
+X-Correlation-ID: http-create-account-001
+
+{
+  "customerId": "{{seedCustomerId}}",
+  "type": "SAVINGS",
+  "currency": "COP",
+  "initialBalance": 250000.00
+}
+
+### Consultar cuenta
+GET {{baseUrl}}/api/v1/accounts/{{sourceAccountId}}
+Authorization: {{customerAuth}}
+X-Correlation-ID: http-get-account-001
+
+### Consultar saldo
+GET {{baseUrl}}/api/v1/accounts/{{sourceAccountId}}/balance
+Authorization: {{customerAuth}}
+X-Correlation-ID: http-balance-001
+
+### Bloquear cuenta
+POST {{baseUrl}}/api/v1/accounts/{{sourceAccountId}}/block
+Authorization: {{operatorAuth}}
+X-Correlation-ID: http-block-account-001
+X-Channel: BRANCH
+
+### Consultar cuenta ya bloqueada
+GET {{baseUrl}}/api/v1/accounts/{{blockedAccountId}}
+Authorization: {{operatorAuth}}
+X-Correlation-ID: http-get-blocked-account-001

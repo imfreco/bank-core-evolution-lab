@@ -12,12 +12,11 @@ import com.imfreco.bank_core_evolution_lab.common.exception.AccountNotFoundExcep
 import com.imfreco.bank_core_evolution_lab.common.exception.CustomerNotFoundException;
 import com.imfreco.bank_core_evolution_lab.customer.infrastructure.CustomerRepository;
 import com.imfreco.bank_core_evolution_lab.outbox.application.OutboxService;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.security.SecureRandom;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AccountService {
@@ -29,8 +28,12 @@ public class AccountService {
     private final BankMetrics bankMetrics;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public AccountService(AccountRepository accountRepository, CustomerRepository customerRepository,
-                          AuditService auditService, OutboxService outboxService, BankMetrics bankMetrics) {
+    public AccountService(
+            AccountRepository accountRepository,
+            CustomerRepository customerRepository,
+            AuditService auditService,
+            OutboxService outboxService,
+            BankMetrics bankMetrics) {
         this.accountRepository = accountRepository;
         this.customerRepository = customerRepository;
         this.auditService = auditService;
@@ -43,13 +46,13 @@ public class AccountService {
         if (!customerRepository.existsById(request.customerId())) {
             throw new CustomerNotFoundException(request.customerId());
         }
-        Account account = new Account(
-                generateAccountNumber(),
-                request.customerId(),
-                request.type(),
-                request.currency(),
-                request.initialBalance()
-        );
+        Account account =
+                new Account(
+                        generateAccountNumber(),
+                        request.customerId(),
+                        request.type(),
+                        request.currency(),
+                        request.initialBalance());
         return AccountMapper.toResponse(accountRepository.save(account));
     }
 
@@ -64,22 +67,44 @@ public class AccountService {
     }
 
     @Transactional
-    public AccountResponse block(UUID accountId, String actor, String channel, String correlationId) {
+    public AccountResponse block(
+            UUID accountId, String actor, String channel, String correlationId) {
         Account account = findAccount(accountId);
         boolean changed = account.block();
         if (changed) {
-            auditService.record("ACCOUNT_BLOCKED", "Account", account.getId().toString(), actor, channel, correlationId,
-                    Map.of("accountNumber", account.getAccountNumber(), "customerId", account.getCustomerId()));
-            outboxService.create("Account", account.getId().toString(), "AccountBlocked",
-                    Map.of("accountId", account.getId(), "accountNumber", account.getAccountNumber(),
-                            "customerId", account.getCustomerId(), "correlationId", correlationId));
+            auditService.record(
+                    "ACCOUNT_BLOCKED",
+                    "Account",
+                    account.getId().toString(),
+                    actor,
+                    channel,
+                    correlationId,
+                    Map.of(
+                            "accountNumber",
+                            account.getAccountNumber(),
+                            "customerId",
+                            account.getCustomerId()));
+            outboxService.create(
+                    "Account",
+                    account.getId().toString(),
+                    "AccountBlocked",
+                    Map.of(
+                            "accountId",
+                            account.getId(),
+                            "accountNumber",
+                            account.getAccountNumber(),
+                            "customerId",
+                            account.getCustomerId(),
+                            "correlationId",
+                            correlationId));
             bankMetrics.incrementBlockedAccounts();
         }
         return AccountMapper.toResponse(account);
     }
 
     public Account findAccount(UUID accountId) {
-        return accountRepository.findById(accountId)
+        return accountRepository
+                .findById(accountId)
                 .orElseThrow(() -> new AccountNotFoundException(accountId.toString()));
     }
 

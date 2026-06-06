@@ -3,14 +3,13 @@ package com.imfreco.bank_core_evolution_lab.common.idempotency;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.imfreco.bank_core_evolution_lab.common.exception.DuplicateIdempotencyKeyException;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.stereotype.Service;
-
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Optional;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.stereotype.Service;
 
 @Service
 public class IdempotencyService {
@@ -27,8 +26,7 @@ public class IdempotencyService {
             String idempotencyKey,
             Object requestBody,
             String operationType,
-            Class<T> responseType
-    ) {
+            Class<T> responseType) {
         String requestHash = hashRequest(requestBody);
         Optional<IdempotencyRecord> existing = repository.findByIdempotencyKey(idempotencyKey);
 
@@ -38,14 +36,17 @@ public class IdempotencyService {
                 throw new DuplicateIdempotencyKeyException(
                         "Idempotency-Key was already used with a different request body");
             }
-            if (record.getStatus() == IdempotencyStatus.COMPLETED && record.getResponseBody() != null) {
+            if (record.getStatus() == IdempotencyStatus.COMPLETED
+                    && record.getResponseBody() != null) {
                 return Optional.of(readResponse(record.getResponseBody(), responseType));
             }
-            throw new DuplicateIdempotencyKeyException("Operation is already in progress for this Idempotency-Key");
+            throw new DuplicateIdempotencyKeyException(
+                    "Operation is already in progress for this Idempotency-Key");
         }
 
         try {
-            repository.saveAndFlush(new IdempotencyRecord(idempotencyKey, requestHash, operationType));
+            repository.saveAndFlush(
+                    new IdempotencyRecord(idempotencyKey, requestHash, operationType));
         } catch (DataIntegrityViolationException exception) {
             throw new DuplicateIdempotencyKeyException(
                     "Operation is already in progress or completed for this Idempotency-Key");
@@ -54,8 +55,13 @@ public class IdempotencyService {
     }
 
     public void complete(String idempotencyKey, Object responseBody) {
-        IdempotencyRecord record = repository.findByIdempotencyKey(idempotencyKey)
-                .orElseThrow(() -> new DuplicateIdempotencyKeyException("Idempotency record not found"));
+        IdempotencyRecord record =
+                repository
+                        .findByIdempotencyKey(idempotencyKey)
+                        .orElseThrow(
+                                () ->
+                                        new DuplicateIdempotencyKeyException(
+                                                "Idempotency record not found"));
         record.complete(writeResponse(responseBody));
     }
 
@@ -63,7 +69,8 @@ public class IdempotencyService {
         try {
             String canonicalJson = objectMapper.writeValueAsString(requestBody);
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(digest.digest(canonicalJson.getBytes(StandardCharsets.UTF_8)));
+            return HexFormat.of()
+                    .formatHex(digest.digest(canonicalJson.getBytes(StandardCharsets.UTF_8)));
         } catch (JsonProcessingException | NoSuchAlgorithmException exception) {
             throw new IllegalStateException("Could not hash idempotent request", exception);
         }
@@ -73,7 +80,8 @@ public class IdempotencyService {
         try {
             return objectMapper.readValue(responseBody, responseType);
         } catch (JsonProcessingException exception) {
-            throw new IllegalStateException("Stored idempotent response could not be deserialized", exception);
+            throw new IllegalStateException(
+                    "Stored idempotent response could not be deserialized", exception);
         }
     }
 

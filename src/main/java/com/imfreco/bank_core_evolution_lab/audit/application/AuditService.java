@@ -5,9 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.imfreco.bank_core_evolution_lab.audit.domain.AuditLog;
 import com.imfreco.bank_core_evolution_lab.audit.infrastructure.AuditLogRepository;
 import com.imfreco.bank_core_evolution_lab.audit.web.AuditLogResponse;
-import org.springframework.stereotype.Service;
-
 import java.util.List;
+import org.springframework.stereotype.Service;
 
 @Service
 public class AuditService {
@@ -20,22 +19,31 @@ public class AuditService {
         this.objectMapper = objectMapper;
     }
 
-    public void record(String operationType, String entityType, String entityId, String actor,
-                       String channel, String correlationId, Object details) {
-        repository.save(new AuditLog(
-                operationType,
-                entityType,
-                entityId,
-                actor,
-                channel,
-                correlationId,
-                toJson(details)
-        ));
+    public void record(
+            String operationType,
+            String entityType,
+            String entityId,
+            String actor,
+            String channel,
+            String correlationId,
+            Object details) {
+        repository.save(
+                new AuditLog(
+                        operationType,
+                        entityType,
+                        entityId,
+                        actor,
+                        channel,
+                        correlationId,
+                        toJson(details)));
     }
 
     public List<AuditLogResponse> find(String entityType, String entityId) {
         List<AuditLog> logs;
-        if (entityType != null && !entityType.isBlank() && entityId != null && !entityId.isBlank()) {
+        if (entityType != null
+                && !entityType.isBlank()
+                && entityId != null
+                && !entityId.isBlank()) {
             logs = repository.findByEntityTypeAndEntityIdOrderByCreatedAtDesc(entityType, entityId);
         } else if (entityType != null && !entityType.isBlank()) {
             logs = repository.findByEntityTypeOrderByCreatedAtDesc(entityType);
@@ -55,8 +63,7 @@ public class AuditService {
                 log.getChannel(),
                 log.getCorrelationId(),
                 log.getDetails(),
-                log.getCreatedAt()
-        );
+                log.getCreatedAt());
     }
 
     private String toJson(Object details) {

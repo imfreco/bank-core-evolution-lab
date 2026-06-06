@@ -8,8 +8,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 public class BankCoreEvolutionLabApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(BankCoreEvolutionLabApplication.class, args);
-	}
-
+    public static void main(String[] args) {
+        SpringApplication.run(BankCoreEvolutionLabApplication.class, args);
+    }
 }

@@ -4,8 +4,7 @@ import com.imfreco.bank_core_evolution_lab.account.domain.Account;
 
 public final class AccountMapper {
 
-    private AccountMapper() {
-    }
+    private AccountMapper() {}
 
     public static AccountResponse toResponse(Account account) {
         return new AccountResponse(
@@ -19,8 +18,7 @@ public final class AccountMapper {
                 account.getAvailableBalance(),
                 account.getVersion(),
                 account.getCreatedAt(),
-                account.getUpdatedAt()
-        );
+                account.getUpdatedAt());
     }
 
     public static BalanceResponse toBalanceResponse(Account account) {
@@ -29,7 +27,6 @@ public final class AccountMapper {
                 account.getAccountNumber(),
                 account.getCurrency(),
                 account.getAccountingBalance(),
-                account.getAvailableBalance()
-        );
+                account.getAvailableBalance());
     }
 }

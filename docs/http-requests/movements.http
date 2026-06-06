@@ -1,0 +1,16 @@
+@baseUrl = http://localhost:8080
+@customerAuth = Basic Y3VzdG9tZXI6Y3VzdG9tZXIxMjM=
+@operatorAuth = Basic b3BlcmF0b3I6b3BlcmF0b3IxMjM=
+@adminAuth = Basic YWRtaW46YWRtaW4xMjM=
+@seedCustomerId = 11111111-1111-1111-1111-111111111111
+@sourceAccountId = aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+
+### Consultar movimientos por cuenta
+GET {{baseUrl}}/api/v1/accounts/{{sourceAccountId}}/movements
+Authorization: {{customerAuth}}
+X-Correlation-ID: http-account-movements-001
+
+### Consultar movimientos por cliente
+GET {{baseUrl}}/api/v1/customers/{{seedCustomerId}}/movements
+Authorization: {{customerAuth}}
+X-Correlation-ID: http-customer-movements-001

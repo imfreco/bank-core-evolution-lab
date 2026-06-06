@@ -1,0 +1,28 @@
+@baseUrl = http://localhost:8080
+@customerAuth = Basic Y3VzdG9tZXI6Y3VzdG9tZXIxMjM=
+@operatorAuth = Basic b3BlcmF0b3I6b3BlcmF0b3IxMjM=
+@adminAuth = Basic YWRtaW46YWRtaW4xMjM=
+@seedCustomerId = 11111111-1111-1111-1111-111111111111
+
+### Crear cliente
+POST {{baseUrl}}/api/v1/customers
+Authorization: {{operatorAuth}}
+Content-Type: application/json
+X-Correlation-ID: http-create-customer-001
+
+{
+  "documentType": "CC",
+  "documentNumber": "90000001",
+  "fullName": "Laura Demo",
+  "email": "laura.demo@example.com"
+}
+
+### Consultar cliente inicial
+GET {{baseUrl}}/api/v1/customers/{{seedCustomerId}}
+Authorization: {{customerAuth}}
+X-Correlation-ID: http-get-customer-001
+
+### Consultar productos del cliente
+GET {{baseUrl}}/api/v1/customers/{{seedCustomerId}}/products
+Authorization: {{customerAuth}}
+X-Correlation-ID: http-get-products-001

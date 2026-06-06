@@ -8,7 +8,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-
 import java.time.Instant;
 import java.util.UUID;
 
@@ -16,8 +15,7 @@ import java.util.UUID;
 @Table(name = "customers")
 public class Customer {
 
-    @Id
-    private UUID id;
+    @Id private UUID id;
 
     @Column(name = "document_type", nullable = false, length = 20)
     private String documentType;
@@ -41,8 +39,7 @@ public class Customer {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    protected Customer() {
-    }
+    protected Customer() {}
 
     public Customer(String documentType, String documentNumber, String fullName, String email) {
         this.id = UUID.randomUUID();

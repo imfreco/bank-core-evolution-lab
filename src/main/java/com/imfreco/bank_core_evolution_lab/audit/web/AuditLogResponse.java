@@ -12,6 +12,4 @@ public record AuditLogResponse(
         String channel,
         String correlationId,
         String details,
-        Instant createdAt
-) {
-}
+        Instant createdAt) {}

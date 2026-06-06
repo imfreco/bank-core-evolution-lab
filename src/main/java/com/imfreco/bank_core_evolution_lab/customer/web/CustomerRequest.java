@@ -7,6 +7,4 @@ public record CustomerRequest(
         @NotBlank String documentType,
         @NotBlank String documentNumber,
         @NotBlank String fullName,
-        @Email @NotBlank String email
-) {
-}
+        @Email @NotBlank String email) {}

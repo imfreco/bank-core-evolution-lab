@@ -7,7 +7,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-
 import java.time.Instant;
 import java.util.UUID;
 
@@ -15,8 +14,7 @@ import java.util.UUID;
 @Table(name = "idempotency_records")
 public class IdempotencyRecord {
 
-    @Id
-    private UUID id;
+    @Id private UUID id;
 
     @Column(name = "idempotency_key", nullable = false, unique = true, length = 120)
     private String idempotencyKey;
@@ -37,8 +35,7 @@ public class IdempotencyRecord {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    protected IdempotencyRecord() {
-    }
+    protected IdempotencyRecord() {}
 
     public IdempotencyRecord(String idempotencyKey, String requestHash, String operationType) {
         this.id = UUID.randomUUID();

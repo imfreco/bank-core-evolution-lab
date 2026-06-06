@@ -8,7 +8,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -17,8 +16,7 @@ import java.util.UUID;
 @Table(name = "movements")
 public class Movement {
 
-    @Id
-    private UUID id;
+    @Id private UUID id;
 
     @Column(name = "account_id", nullable = false)
     private UUID accountId;
@@ -46,8 +44,7 @@ public class Movement {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    protected Movement() {
-    }
+    protected Movement() {}
 
     public Movement(
             UUID accountId,
@@ -56,8 +53,7 @@ public class Movement {
             BigDecimal amount,
             Currency currency,
             BigDecimal balanceAfterMovement,
-            String description
-    ) {
+            String description) {
         this.id = UUID.randomUUID();
         this.accountId = accountId;
         this.transferId = transferId;

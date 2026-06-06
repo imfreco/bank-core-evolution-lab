@@ -6,13 +6,18 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
-@ConditionalOnProperty(prefix = "bank.projections.mongodb", name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(
+        prefix = "bank.projections.mongodb",
+        name = "enabled",
+        havingValue = "true",
+        matchIfMissing = true)
 public class MovementProjectionJob {
 
     private final MovementProjectionService projectionService;
     private final MovementService movementService;
 
-    public MovementProjectionJob(MovementProjectionService projectionService, MovementService movementService) {
+    public MovementProjectionJob(
+            MovementProjectionService projectionService, MovementService movementService) {
         this.projectionService = projectionService;
         this.movementService = movementService;
     }
@@ -26,7 +31,8 @@ public class MovementProjectionJob {
          * actualizacion de proyeccion falla o llega tarde.
          */
         for (var customerId : projectionService.findCustomerIdsWithAccounts()) {
-            projectionService.refreshCustomerMovements(customerId, movementService.findByCustomerFromSql(customerId));
+            projectionService.refreshCustomerMovements(
+                    customerId, movementService.findByCustomerFromSql(customerId));
         }
     }
 }

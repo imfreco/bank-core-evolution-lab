@@ -20,14 +20,31 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    /*
+     * Demo security only. TODO production-grade: Validate authenticated customer
+     * ownership before returning customer/account/movement data, and replace Basic
+     * Auth with OAuth2/OIDC, signed JWT, scopes/claims and centralized secrets.
+     */
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/health/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/actuator/metrics/**", "/actuator/prometheus").hasAnyRole("ADMIN", "OPERATOR")
-                        .anyRequest().authenticated())
+                .sessionManagement(
+                        session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(
+                        auth ->
+                                auth.requestMatchers(
+                                                "/actuator/health/**",
+                                                "/v3/api-docs/**",
+                                                "/swagger-ui/**",
+                                                "/swagger-ui.html")
+                                        .permitAll()
+                                        .requestMatchers(
+                                                HttpMethod.GET,
+                                                "/actuator/metrics/**",
+                                                "/actuator/prometheus")
+                                        .hasAnyRole("ADMIN", "OPERATOR")
+                                        .anyRequest()
+                                        .authenticated())
                 .httpBasic(Customizer.withDefaults());
         return http.build();
     }
@@ -35,10 +52,18 @@ public class SecurityConfig {
     @Bean
     UserDetailsService userDetailsService(PasswordEncoder passwordEncoder) {
         return new InMemoryUserDetailsManager(
-                User.withUsername("customer").password(passwordEncoder.encode("customer123")).roles("CUSTOMER").build(),
-                User.withUsername("operator").password(passwordEncoder.encode("operator123")).roles("OPERATOR").build(),
-                User.withUsername("admin").password(passwordEncoder.encode("admin123")).roles("ADMIN").build()
-        );
+                User.withUsername("customer")
+                        .password(passwordEncoder.encode("customer123"))
+                        .roles("CUSTOMER")
+                        .build(),
+                User.withUsername("operator")
+                        .password(passwordEncoder.encode("operator123"))
+                        .roles("OPERATOR")
+                        .build(),
+                User.withUsername("admin")
+                        .password(passwordEncoder.encode("admin123"))
+                        .roles("ADMIN")
+                        .build());
     }
 
     @Bean

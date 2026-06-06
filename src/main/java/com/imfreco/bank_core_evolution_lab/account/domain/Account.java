@@ -11,7 +11,6 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -20,8 +19,7 @@ import java.util.UUID;
 @Table(name = "accounts")
 public class Account {
 
-    @Id
-    private UUID id;
+    @Id private UUID id;
 
     @Column(name = "account_number", nullable = false, unique = true, length = 32)
     private String accountNumber;
@@ -57,10 +55,14 @@ public class Account {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    protected Account() {
-    }
+    protected Account() {}
 
-    public Account(String accountNumber, UUID customerId, AccountType type, Currency currency, BigDecimal initialBalance) {
+    public Account(
+            String accountNumber,
+            UUID customerId,
+            AccountType type,
+            Currency currency,
+            BigDecimal initialBalance) {
         this.id = UUID.randomUUID();
         this.accountNumber = accountNumber;
         this.customerId = customerId;

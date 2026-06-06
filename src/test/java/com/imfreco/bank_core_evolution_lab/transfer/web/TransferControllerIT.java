@@ -1,9 +1,18 @@
 package com.imfreco.bank_core_evolution_lab.transfer.web;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.imfreco.bank_core_evolution_lab.outbox.domain.OutboxEventStatus;
 import com.imfreco.bank_core_evolution_lab.outbox.infrastructure.OutboxEventRepository;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -17,16 +26,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.hasSize;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 @Testcontainers(disabledWithoutDocker = true)
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -34,13 +33,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class TransferControllerIT {
 
     @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
-            .withDatabaseName("bank_core")
-            .withUsername("bank")
-            .withPassword("bank");
+    static PostgreSQLContainer<?> postgres =
+            new PostgreSQLContainer<>("postgres:16-alpine")
+                    .withDatabaseName("bank_core")
+                    .withUsername("bank")
+                    .withPassword("bank");
 
-    @Container
-    static MongoDBContainer mongo = new MongoDBContainer("mongo:7");
+    @Container static MongoDBContainer mongo = new MongoDBContainer("mongo:7");
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
@@ -52,32 +51,33 @@ class TransferControllerIT {
         registry.add("bank.projections.mongodb.enabled", () -> "false");
     }
 
-    @Autowired
-    MockMvc mockMvc;
+    @Autowired MockMvc mockMvc;
 
-    @Autowired
-    ObjectMapper objectMapper;
+    @Autowired ObjectMapper objectMapper;
 
-    @Autowired
-    OutboxEventRepository outboxEventRepository;
+    @Autowired OutboxEventRepository outboxEventRepository;
 
     @Test
     void createsSuccessfulTransferMovementsAndOutboxEvent() throws Exception {
-        String response = postTransfer(UUID.randomUUID().toString(), "10000.00")
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.status").value("COMPLETED"))
-                .andExpect(jsonPath("$.sourceAccountNumber").value("1000000001"))
-                .andExpect(jsonPath("$.targetAccountNumber").value("1000000002"))
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        String response =
+                postTransfer(UUID.randomUUID().toString(), "10000.00")
+                        .andExpect(status().isCreated())
+                        .andExpect(jsonPath("$.status").value("COMPLETED"))
+                        .andExpect(jsonPath("$.sourceAccountNumber").value("1000000001"))
+                        .andExpect(jsonPath("$.targetAccountNumber").value("1000000002"))
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString();
         JsonNode json = objectMapper.readTree(response);
 
-        mockMvc.perform(get("/api/v1/accounts/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/movements")
-                        .with(httpBasic("customer", "customer123")))
+        mockMvc.perform(
+                        get("/api/v1/accounts/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/movements")
+                                .with(httpBasic("customer", "customer123")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].transferReference").value(json.get("transferReference").asText()))
+                .andExpect(
+                        jsonPath("$[0].transferReference")
+                                .value(json.get("transferReference").asText()))
                 .andExpect(jsonPath("$[0].type").value("DEBIT"));
 
         assertThat(outboxEventRepository.countByStatus(OutboxEventStatus.PENDING)).isEqualTo(1);
@@ -92,7 +92,8 @@ class TransferControllerIT {
 
     @Test
     void rejectsTransferFromBlockedAccount() throws Exception {
-        String body = """
+        String body =
+                """
                 {
                   "sourceAccountNumber": "1000000003",
                   "targetAccountNumber": "1000000002",
@@ -101,12 +102,13 @@ class TransferControllerIT {
                 }
                 """;
 
-        mockMvc.perform(post("/api/v1/transfers")
-                        .with(httpBasic("customer", "customer123"))
-                        .header("Idempotency-Key", UUID.randomUUID().toString())
-                        .header("X-Correlation-ID", "it-correlation")
-                        .contentType("application/json")
-                        .content(body))
+        mockMvc.perform(
+                        post("/api/v1/transfers")
+                                .with(httpBasic("customer", "customer123"))
+                                .header("Idempotency-Key", UUID.randomUUID().toString())
+                                .header("X-Correlation-ID", "it-correlation")
+                                .contentType("application/json")
+                                .content(body))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.error").value("ACCOUNT_BLOCKED"));
     }
@@ -114,16 +116,18 @@ class TransferControllerIT {
     @Test
     void sameIdempotencyKeyAndSameBodyReturnsSameTransfer() throws Exception {
         String key = UUID.randomUUID().toString();
-        String first = postTransfer(key, "15000.00")
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        String second = postTransfer(key, "15000.00")
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        String first =
+                postTransfer(key, "15000.00")
+                        .andExpect(status().isCreated())
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString();
+        String second =
+                postTransfer(key, "15000.00")
+                        .andExpect(status().isCreated())
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString();
 
         assertThat(objectMapper.readTree(first).get("transferReference").asText())
                 .isEqualTo(objectMapper.readTree(second).get("transferReference").asText());
@@ -138,21 +142,25 @@ class TransferControllerIT {
                 .andExpect(jsonPath("$.error").value("DUPLICATE_IDEMPOTENCY_KEY"));
     }
 
-    private org.springframework.test.web.servlet.ResultActions postTransfer(String idempotencyKey, String amount) throws Exception {
-        String body = """
+    private org.springframework.test.web.servlet.ResultActions postTransfer(
+            String idempotencyKey, String amount) throws Exception {
+        String body =
+                """
                 {
                   "sourceAccountNumber": "1000000001",
                   "targetAccountNumber": "1000000002",
                   "amount": %s,
                   "currency": "COP"
                 }
-                """.formatted(amount);
+                """
+                        .formatted(amount);
 
-        return mockMvc.perform(post("/api/v1/transfers")
-                .with(httpBasic("customer", "customer123"))
-                .header("Idempotency-Key", idempotencyKey)
-                .header("X-Correlation-ID", "it-correlation")
-                .contentType("application/json")
-                .content(body));
+        return mockMvc.perform(
+                post("/api/v1/transfers")
+                        .with(httpBasic("customer", "customer123"))
+                        .header("Idempotency-Key", idempotencyKey)
+                        .header("X-Correlation-ID", "it-correlation")
+                        .contentType("application/json")
+                        .content(body));
     }
 }

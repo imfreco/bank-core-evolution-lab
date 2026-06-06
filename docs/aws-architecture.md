@@ -1,4 +1,4 @@
-# AWS Architecture
+# Arquitectura AWS
 
 ## Vista General
 
@@ -22,7 +22,7 @@ Para un banco, este backend se desplegaría en una VPC con subnets públicas y p
 
 - RDS PostgreSQL Multi-AZ como fuente transaccional.
 - Backups automáticos, PITR, cifrado KMS, réplicas de lectura si aplica.
-- MongoDB Atlas o Amazon DocumentDB para read model de movimientos.
+- MongoDB Atlas o Amazon DocumentDB para modelo de lectura de movimientos.
 - ElastiCache Redis para cache, rate limiting o locks no críticos.
 - Nunca usar Redis como fuente de verdad de saldos.
 
@@ -83,4 +83,4 @@ Para un banco, este backend se desplegaría en una VPC con subnets públicas y p
 - Escaneo SAST/DAST/dependencias.
 - Políticas de retención de logs.
 - Pruebas de resiliencia y game days.
-- Reconciliación periódica entre outbox, SQL y read models.
+- Reconciliación periódica entre outbox, SQL y modelos de lectura.

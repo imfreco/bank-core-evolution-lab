@@ -5,7 +5,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-
 import java.time.Instant;
 import java.util.UUID;
 
@@ -13,8 +12,7 @@ import java.util.UUID;
 @Table(name = "audit_logs")
 public class AuditLog {
 
-    @Id
-    private UUID id;
+    @Id private UUID id;
 
     @Column(name = "operation_type", nullable = false, length = 80)
     private String operationType;
@@ -40,11 +38,16 @@ public class AuditLog {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    protected AuditLog() {
-    }
+    protected AuditLog() {}
 
-    public AuditLog(String operationType, String entityType, String entityId, String actor,
-                    String channel, String correlationId, String details) {
+    public AuditLog(
+            String operationType,
+            String entityType,
+            String entityId,
+            String actor,
+            String channel,
+            String correlationId,
+            String details) {
         this.id = UUID.randomUUID();
         this.operationType = operationType;
         this.entityType = entityType;

@@ -4,8 +4,7 @@ import com.imfreco.bank_core_evolution_lab.customer.domain.Customer;
 
 public final class CustomerMapper {
 
-    private CustomerMapper() {
-    }
+    private CustomerMapper() {}
 
     public static CustomerResponse toResponse(Customer customer) {
         return new CustomerResponse(
@@ -16,7 +15,6 @@ public final class CustomerMapper {
                 customer.getEmail(),
                 customer.getStatus(),
                 customer.getCreatedAt(),
-                customer.getUpdatedAt()
-        );
+                customer.getUpdatedAt());
     }
 }

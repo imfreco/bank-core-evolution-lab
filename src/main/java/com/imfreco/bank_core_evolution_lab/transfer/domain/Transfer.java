@@ -8,7 +8,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -17,8 +16,7 @@ import java.util.UUID;
 @Table(name = "transfers")
 public class Transfer {
 
-    @Id
-    private UUID id;
+    @Id private UUID id;
 
     @Column(name = "transfer_reference", nullable = false, unique = true, length = 64)
     private String transferReference;
@@ -52,10 +50,14 @@ public class Transfer {
     @Column(name = "completed_at")
     private Instant completedAt;
 
-    protected Transfer() {
-    }
+    protected Transfer() {}
 
-    public Transfer(UUID sourceAccountId, UUID targetAccountId, BigDecimal amount, Currency currency, String idempotencyKey) {
+    public Transfer(
+            UUID sourceAccountId,
+            UUID targetAccountId,
+            BigDecimal amount,
+            Currency currency,
+            String idempotencyKey) {
         this.id = UUID.randomUUID();
         this.transferReference = UUID.randomUUID().toString();
         this.sourceAccountId = sourceAccountId;

@@ -2,25 +2,22 @@ package com.imfreco.bank_core_evolution_lab.movement.mongo;
 
 import com.imfreco.bank_core_evolution_lab.account.domain.Currency;
 import com.imfreco.bank_core_evolution_lab.movement.domain.MovementType;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document(collection = "customer_movement_view")
 public class CustomerMovementViewDocument {
 
-    @Id
-    private String id;
+    @Id private String id;
     private String customerId;
     private List<MovementItemDocument> movements = new ArrayList<>();
     private Instant updatedAt;
 
-    protected CustomerMovementViewDocument() {
-    }
+    protected CustomerMovementViewDocument() {}
 
     public CustomerMovementViewDocument(String customerId, List<MovementItemDocument> movements) {
         this.id = customerId;
@@ -53,7 +50,5 @@ public class CustomerMovementViewDocument {
             Currency currency,
             String description,
             Instant createdAt,
-            String channel
-    ) {
-    }
+            String channel) {}
 }

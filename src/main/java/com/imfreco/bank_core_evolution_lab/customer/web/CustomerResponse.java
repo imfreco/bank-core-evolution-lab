@@ -1,7 +1,6 @@
 package com.imfreco.bank_core_evolution_lab.customer.web;
 
 import com.imfreco.bank_core_evolution_lab.customer.domain.CustomerStatus;
-
 import java.time.Instant;
 import java.util.UUID;
 
@@ -13,6 +12,4 @@ public record CustomerResponse(
         String email,
         CustomerStatus status,
         Instant createdAt,
-        Instant updatedAt
-) {
-}
+        Instant updatedAt) {}

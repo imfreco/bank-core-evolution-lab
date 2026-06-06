@@ -14,16 +14,21 @@ public class BankMetrics {
     private final Counter blockedAccounts;
 
     public BankMetrics(MeterRegistry meterRegistry, OutboxEventRepository outboxEventRepository) {
-        this.successfulTransfers = Counter.builder("bank.transfers.successful")
-                .description("Successful internal transfers")
-                .register(meterRegistry);
-        this.failedTransfers = Counter.builder("bank.transfers.failed")
-                .description("Failed internal transfers")
-                .register(meterRegistry);
-        this.blockedAccounts = Counter.builder("bank.accounts.blocked")
-                .description("Preventive account blocks")
-                .register(meterRegistry);
-        meterRegistry.gauge("bank.outbox.events.pending", outboxEventRepository,
+        this.successfulTransfers =
+                Counter.builder("bank.transfers.successful")
+                        .description("Successful internal transfers")
+                        .register(meterRegistry);
+        this.failedTransfers =
+                Counter.builder("bank.transfers.failed")
+                        .description("Failed internal transfers")
+                        .register(meterRegistry);
+        this.blockedAccounts =
+                Counter.builder("bank.accounts.blocked")
+                        .description("Preventive account blocks")
+                        .register(meterRegistry);
+        meterRegistry.gauge(
+                "bank.outbox.events.pending",
+                outboxEventRepository,
                 repository -> repository.countByStatus(OutboxEventStatus.PENDING));
     }
 

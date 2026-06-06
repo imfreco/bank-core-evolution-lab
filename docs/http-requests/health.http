@@ -1,0 +1,23 @@
+@baseUrl = http://localhost:8080
+@customerAuth = Basic Y3VzdG9tZXI6Y3VzdG9tZXIxMjM=
+@operatorAuth = Basic b3BlcmF0b3I6b3BlcmF0b3IxMjM=
+@adminAuth = Basic YWRtaW46YWRtaW4xMjM=
+
+### Chequeo de salud público
+GET {{baseUrl}}/actuator/health
+X-Correlation-ID: http-health-001
+
+### Nombres de métricas
+GET {{baseUrl}}/actuator/metrics
+Authorization: {{operatorAuth}}
+X-Correlation-ID: http-metrics-001
+
+### Métricas Prometheus
+GET {{baseUrl}}/actuator/prometheus
+Authorization: {{operatorAuth}}
+X-Correlation-ID: http-prometheus-001
+
+### Métrica custom de transferencias exitosas
+GET {{baseUrl}}/actuator/metrics/bank.transfers.successful
+Authorization: {{operatorAuth}}
+X-Correlation-ID: http-metric-transfer-success-001

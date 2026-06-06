@@ -1,0 +1,102 @@
+@baseUrl = http://localhost:8080
+@customerAuth = Basic Y3VzdG9tZXI6Y3VzdG9tZXIxMjM=
+@operatorAuth = Basic b3BlcmF0b3I6b3BlcmF0b3IxMjM=
+@adminAuth = Basic YWRtaW46YWRtaW4xMjM=
+@sourceAccountNumber = 1000000001
+@targetAccountNumber = 1000000002
+
+### Transferencia exitosa
+POST {{baseUrl}}/api/v1/transfers
+Authorization: {{customerAuth}}
+Content-Type: application/json
+Idempotency-Key: http-transfer-success-001
+X-Correlation-ID: http-transfer-success-001
+X-Channel: WEB
+
+{
+  "sourceAccountNumber": "{{sourceAccountNumber}}",
+  "targetAccountNumber": "{{targetAccountNumber}}",
+  "amount": 10000.00,
+  "currency": "COP"
+}
+
+### Transferencia con saldo insuficiente
+POST {{baseUrl}}/api/v1/transfers
+Authorization: {{customerAuth}}
+Content-Type: application/json
+Idempotency-Key: http-transfer-insufficient-001
+X-Correlation-ID: http-transfer-insufficient-001
+X-Channel: WEB
+
+{
+  "sourceAccountNumber": "{{sourceAccountNumber}}",
+  "targetAccountNumber": "{{targetAccountNumber}}",
+  "amount": 999999999.00,
+  "currency": "COP"
+}
+
+### Transferencia idempotente - primera petición
+POST {{baseUrl}}/api/v1/transfers
+Authorization: {{customerAuth}}
+Content-Type: application/json
+Idempotency-Key: http-transfer-idempotent-001
+X-Correlation-ID: http-transfer-idempotent-001
+X-Channel: WEB
+
+{
+  "sourceAccountNumber": "{{sourceAccountNumber}}",
+  "targetAccountNumber": "{{targetAccountNumber}}",
+  "amount": 5000.00,
+  "currency": "COP"
+}
+
+### Transferencia idempotente - misma key y mismo body retorna la misma respuesta
+POST {{baseUrl}}/api/v1/transfers
+Authorization: {{customerAuth}}
+Content-Type: application/json
+Idempotency-Key: http-transfer-idempotent-001
+X-Correlation-ID: http-transfer-idempotent-retry-001
+X-Channel: WEB
+
+{
+  "sourceAccountNumber": "{{sourceAccountNumber}}",
+  "targetAccountNumber": "{{targetAccountNumber}}",
+  "amount": 5000.00,
+  "currency": "COP"
+}
+
+### Conflicto de idempotencia - misma key y body diferente retorna 409
+POST {{baseUrl}}/api/v1/transfers
+Authorization: {{customerAuth}}
+Content-Type: application/json
+Idempotency-Key: http-transfer-idempotent-001
+X-Correlation-ID: http-transfer-conflict-001
+X-Channel: WEB
+
+{
+  "sourceAccountNumber": "{{sourceAccountNumber}}",
+  "targetAccountNumber": "{{targetAccountNumber}}",
+  "amount": 7000.00,
+  "currency": "COP"
+}
+
+### Transferencia desde cuenta bloqueada
+POST {{baseUrl}}/api/v1/transfers
+Authorization: {{customerAuth}}
+Content-Type: application/json
+Idempotency-Key: http-transfer-blocked-001
+X-Correlation-ID: http-transfer-blocked-001
+X-Channel: WEB
+
+{
+  "sourceAccountNumber": "1000000003",
+  "targetAccountNumber": "{{targetAccountNumber}}",
+  "amount": 1000.00,
+  "currency": "COP"
+}
+
+### Consultar transferencia por referencia
+# Reemplaza <transferReference> con un valor retornado por una transferencia exitosa.
+GET {{baseUrl}}/api/v1/transfers/<transferReference>
+Authorization: {{customerAuth}}
+X-Correlation-ID: http-get-transfer-001

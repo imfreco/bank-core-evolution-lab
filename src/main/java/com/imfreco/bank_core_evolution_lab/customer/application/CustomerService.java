@@ -9,10 +9,9 @@ import com.imfreco.bank_core_evolution_lab.customer.web.CustomerMapper;
 import com.imfreco.bank_core_evolution_lab.customer.web.CustomerProductsResponse;
 import com.imfreco.bank_core_evolution_lab.customer.web.CustomerRequest;
 import com.imfreco.bank_core_evolution_lab.customer.web.CustomerResponse;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.UUID;
 
 @Service
 public class CustomerService {
@@ -20,19 +19,20 @@ public class CustomerService {
     private final CustomerRepository customerRepository;
     private final AccountRepository accountRepository;
 
-    public CustomerService(CustomerRepository customerRepository, AccountRepository accountRepository) {
+    public CustomerService(
+            CustomerRepository customerRepository, AccountRepository accountRepository) {
         this.customerRepository = customerRepository;
         this.accountRepository = accountRepository;
     }
 
     @Transactional
     public CustomerResponse create(CustomerRequest request) {
-        Customer customer = new Customer(
-                request.documentType(),
-                request.documentNumber(),
-                request.fullName(),
-                request.email()
-        );
+        Customer customer =
+                new Customer(
+                        request.documentType(),
+                        request.documentNumber(),
+                        request.fullName(),
+                        request.email());
         return CustomerMapper.toResponse(customerRepository.save(customer));
     }
 
@@ -48,12 +48,12 @@ public class CustomerService {
                 customerId,
                 accountRepository.findByCustomerId(customerId).stream()
                         .map(AccountMapper::toResponse)
-                        .toList()
-        );
+                        .toList());
     }
 
     public Customer findCustomer(UUID customerId) {
-        return customerRepository.findById(customerId)
+        return customerRepository
+                .findById(customerId)
                 .orElseThrow(() -> new CustomerNotFoundException(customerId));
     }
 }

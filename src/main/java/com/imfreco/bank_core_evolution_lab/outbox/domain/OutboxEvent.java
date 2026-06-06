@@ -7,7 +7,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-
 import java.time.Instant;
 import java.util.UUID;
 
@@ -15,8 +14,7 @@ import java.util.UUID;
 @Table(name = "outbox_events")
 public class OutboxEvent {
 
-    @Id
-    private UUID id;
+    @Id private UUID id;
 
     @Column(name = "aggregate_type", nullable = false, length = 80)
     private String aggregateType;
@@ -43,8 +41,7 @@ public class OutboxEvent {
     @Column(name = "published_at")
     private Instant publishedAt;
 
-    protected OutboxEvent() {
-    }
+    protected OutboxEvent() {}
 
     public OutboxEvent(String aggregateType, String aggregateId, String eventType, String payload) {
         this.id = UUID.randomUUID();

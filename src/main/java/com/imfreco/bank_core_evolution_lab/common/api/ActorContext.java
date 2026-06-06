@@ -4,8 +4,7 @@ import java.security.Principal;
 
 public final class ActorContext {
 
-    private ActorContext() {
-    }
+    private ActorContext() {}
 
     public static String actor(Principal principal) {
         return principal == null ? "anonymous" : principal.getName();

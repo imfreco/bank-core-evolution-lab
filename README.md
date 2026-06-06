@@ -1,181 +1,358 @@
 # bank-core-evolution-lab
 
-Laboratorio backend bancario construido con Java 21 y Spring Boot 3.x para practicar diseño senior de servicios core: APIs REST, transacciones SQL, idempotencia, concurrencia, auditoría, outbox pattern, MongoDB como read model, seguridad básica, observabilidad, Docker y Kubernetes.
+[![CI](https://github.com/imfreco/bank-core-evolution-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/imfreco/bank-core-evolution-lab/actions/workflows/ci.yml)
+![Java 21](https://img.shields.io/badge/Java-21-orange)
+![Spring Boot 3](https://img.shields.io/badge/Spring%20Boot-3.x-brightgreen)
+![Docker](https://img.shields.io/badge/Docker-listo-blue)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-fuente%20de%20verdad-336791)
+![MongoDB](https://img.shields.io/badge/MongoDB-modelo%20de%20lectura-47A248)
 
-## Objetivos de Aprendizaje
+Laboratorio backend bancario construido con Java 21 y Spring Boot 3 para practicar temas senior de ingeniería backend: transferencias transaccionales, idempotencia, control de concurrencia, auditoría, outbox pattern, SQL como fuente de verdad, MongoDB como modelo de lectura, seguridad, observabilidad, Docker, Kubernetes y diseño de despliegue en AWS.
 
-- Implementar casos bancarios con arquitectura limpia/hexagonal simplificada.
-- Explicar `@Transactional`, locking, idempotencia y consistencia eventual.
-- Separar modelo transaccional en PostgreSQL de vistas de lectura en MongoDB.
-- Practicar seguridad, auditoría, trazabilidad y métricas operativas.
-- Preparar respuestas de entrevista sobre resiliencia, despliegue cloud y operación bancaria.
+## Objetivo
 
-## Arquitectura
+El proyecto simula un core bancario pequeño enfocado en transferencias internas entre cuentas. Está pensado como laboratorio técnico: suficientemente compacto para entenderlo completo, pero con suficiente profundidad para defenderlo en una entrevista senior backend.
 
-El paquete base es `com.imfreco.bank_core_evolution_lab`.
+## Contexto Bancario
 
-- `customer`, `account`, `transfer`, `movement`, `audit`, `outbox`: módulos funcionales.
+El caso de uso central es:
+
+```http
+POST /api/v1/transfers
+```
+
+El flujo de transferencia debe ser seguro ante reintentos y llamadas concurrentes:
+
+- Validar cuenta origen y cuenta destino.
+- Validar estado activo, moneda y saldo disponible.
+- Debitar origen y acreditar destino de forma atómica.
+- Registrar movimientos financieros append-only.
+- Persistir auditoría.
+- Persistir un evento outbox dentro de la misma transacción.
+- Usar idempotencia persistida para evitar doble débito.
+
+## Tecnologías
+
+- Java 21
+- Spring Boot 3.3
+- Maven
+- Spring Web
+- Spring Data JPA
+- PostgreSQL
+- Flyway
+- Spring Validation
+- Spring Security
+- Spring Boot Actuator
+- Micrometer y Prometheus
+- Springdoc OpenAPI
+- MongoDB
+- Redis opcional
+- JUnit 5 y Mockito
+- Testcontainers
+- Docker Compose
+- Manifiestos Kubernetes
+
+## Resumen de Arquitectura
+
+La estructura de paquetes sigue un estilo limpio/hexagonal simplificado:
+
+```text
+src/main/java/com/imfreco/bank_core_evolution_lab
+├── common
+├── customer
+├── account
+├── transfer
+├── movement
+├── audit
+└── outbox
+```
+
+Cada módulo de negocio separa:
+
 - `domain`: entidades y enums de negocio.
-- `application`: casos de uso y transacciones.
-- `infrastructure`: repositorios SQL.
-- `web`: DTOs, mappers y controladores REST.
-- `movement.mongo`: read model en MongoDB.
-- `common`: errores, seguridad, logging, métricas e idempotencia.
+- `application`: casos de uso y límites transaccionales.
+- `infrastructure`: repositorios y adaptadores de persistencia.
+- `web`: controladores REST, DTOs y mappers.
 
-No se exponen entidades JPA en controladores. Los controladores reciben DTOs, delegan en servicios de aplicación y retornan responses explícitos.
+La capa REST no expone entidades JPA directamente.
 
-## Stack
+Los diagramas detallados están en [docs/architecture.md](docs/architecture.md).
 
-Java 21, Spring Boot 3.3, Maven, Spring Web, Spring Data JPA, PostgreSQL, Flyway, Spring Validation, Spring Security, Actuator, Micrometer/Prometheus, Springdoc OpenAPI, MongoDB, Redis opcional, JUnit 5, Mockito y Testcontainers.
+## Funcionalidades Principales
+
+- Gestión de clientes.
+- Creación de cuentas, consulta de saldo y bloqueo preventivo.
+- Transferencias internas con idempotencia.
+- Movimientos financieros append-only.
+- Auditoría técnica y funcional.
+- Outbox pattern para publicación simulada de eventos.
+- Modelo de lectura en MongoDB para historial de movimientos por cliente.
+- Correlation ID con logs MDC.
+- Health checks y métricas con Actuator.
+- Seguridad demo con Basic Auth y roles.
+- Entorno local con Docker Compose.
+- Manifiestos Kubernetes con probes, resources y HPA.
+- Notas de despliegue conceptual en AWS.
 
 ## Ejecución Local
 
-Requisitos: Java 21, Docker y Docker Compose.
+Requisitos:
+
+- Java 21
+- Docker y Docker Compose
+
+Compilar:
 
 ```bash
 ./mvnw clean install
+```
+
+Levantar infraestructura y aplicación:
+
+```bash
 docker compose up --build
 ```
 
-La app queda en `http://localhost:8080`.
+La API queda disponible en:
 
-Credenciales Basic Auth de laboratorio:
+```text
+http://localhost:8080
+```
 
-- `customer / customer123`
-- `operator / operator123`
-- `admin / admin123`
+Swagger UI:
 
-Swagger UI: `http://localhost:8080/swagger-ui.html`
+```text
+http://localhost:8080/swagger-ui.html
+```
+
+## Credenciales Demo
+
+```text
+customer / customer123
+operator / operator123
+admin    / admin123
+```
+
+Roles:
+
+- `ROLE_CUSTOMER`: puede consultar y transferir en la demo.
+- `ROLE_OPERATOR`: puede bloquear cuentas y consultar auditoría.
+- `ROLE_ADMIN`: acceso administrativo.
+
+Nota de producción: Basic Auth es intencionalmente limitado. Una implementación bancaria debería evolucionar a OAuth2/OIDC, JWT firmado, scopes/claims, validación de ownership por cliente, mTLS, Secrets Manager, cifrado, WAF y rate limiting.
+
+## Datos Iniciales
+
+Clientes:
+
+```text
+11111111-1111-1111-1111-111111111111
+22222222-2222-2222-2222-222222222222
+```
+
+Cuentas:
+
+```text
+1000000001 ACTIVE  COP 1,000,000
+1000000002 ACTIVE  COP   500,000
+1000000003 BLOCKED COP   250,000
+```
 
 ## Pruebas
 
-Unitarias:
+Pruebas unitarias y verificación por defecto:
 
 ```bash
 ./mvnw test
+./mvnw clean verify
 ```
 
-Integración con Testcontainers:
+Pruebas de integración con Testcontainers:
 
 ```bash
 ./mvnw verify -Pintegration-tests
 ```
 
-## Datos Seed
+Si Docker no está disponible, la clase de integración con Testcontainers está configurada para saltarse de forma controlada.
 
-Clientes:
+## Formato
 
-- `11111111-1111-1111-1111-111111111111`
-- `22222222-2222-2222-2222-222222222222`
+Spotless está configurado para Java y consistencia de espacios/saltos de línea en archivos del proyecto.
 
-Cuentas:
+Verificar formato:
 
-- `1000000001`: activa, COP, saldo 1.000.000
-- `1000000002`: activa, COP, saldo 500.000
-- `1000000003`: bloqueada, COP
+```bash
+./mvnw spotless:check
+```
+
+Aplicar formato:
+
+```bash
+./mvnw spotless:apply
+```
+
+## Ejemplos HTTP
+
+Los ejemplos listos para IntelliJ HTTP Client o VS Code REST Client están en [docs/http-requests](docs/http-requests).
+
+Cubren:
+
+- Crear cliente.
+- Consultar cliente y productos.
+- Crear cuenta.
+- Consultar saldo.
+- Transferencia exitosa.
+- Transferencia con saldo insuficiente.
+- Reintento idempotente con misma key y mismo body.
+- Conflicto con misma key y body diferente.
+- Bloquear cuenta.
+- Consultar movimientos.
+- Consultar auditoría.
+- Health y métricas.
 
 ## Endpoints Principales
 
-- `POST /api/v1/customers`
-- `GET /api/v1/customers/{customerId}`
-- `GET /api/v1/customers/{customerId}/products`
-- `POST /api/v1/accounts`
-- `GET /api/v1/accounts/{accountId}`
-- `GET /api/v1/accounts/{accountId}/balance`
-- `POST /api/v1/accounts/{accountId}/block`
-- `POST /api/v1/transfers`
-- `GET /api/v1/transfers/{transferReference}`
-- `GET /api/v1/accounts/{accountId}/movements`
-- `GET /api/v1/customers/{customerId}/movements`
-- `GET /api/v1/audit-logs?entityType=&entityId=`
-- `GET /actuator/health`
-- `GET /actuator/metrics`
-- `GET /actuator/prometheus`
+```text
+POST /api/v1/customers
+GET  /api/v1/customers/{customerId}
+GET  /api/v1/customers/{customerId}/products
 
-## Ejemplo de Transferencia
+POST /api/v1/accounts
+GET  /api/v1/accounts/{accountId}
+GET  /api/v1/accounts/{accountId}/balance
+POST /api/v1/accounts/{accountId}/block
 
-```bash
-curl -u customer:customer123 \
-  -H "Content-Type: application/json" \
-  -H "Idempotency-Key: transfer-demo-001" \
-  -H "X-Correlation-ID: demo-correlation-001" \
-  -H "X-Channel: WEB" \
-  -d '{
-    "sourceAccountNumber": "1000000001",
-    "targetAccountNumber": "1000000002",
-    "amount": 10000.00,
-    "currency": "COP"
-  }' \
-  http://localhost:8080/api/v1/transfers
+POST /api/v1/transfers
+GET  /api/v1/transfers/{transferReference}
+
+GET  /api/v1/accounts/{accountId}/movements
+GET  /api/v1/customers/{customerId}/movements
+
+GET  /api/v1/audit-logs?entityType=&entityId=
+
+GET  /actuator/health
+GET  /actuator/metrics
+GET  /actuator/prometheus
 ```
-
-Si repites la misma petición con la misma `Idempotency-Key`, retorna la misma referencia y evita un segundo débito. Si reutilizas la misma key con otro body, retorna `409 Conflict`.
 
 ## Idempotencia
 
-`POST /api/v1/transfers` requiere el header `Idempotency-Key`. El servicio calcula un hash SHA-256 del body serializado y guarda:
+`POST /api/v1/transfers` requiere `Idempotency-Key`.
 
-- key;
-- hash de request;
-- respuesta exitosa;
-- operación;
+El servicio almacena:
+
+- key de idempotencia;
+- hash del request;
+- respuesta serializada;
+- tipo de operación;
 - estado.
 
-La creación del registro idempotente ocurre en la misma transacción que la transferencia. Ante timeout del cliente, un retry con el mismo body recupera la respuesta ya comprometida y no vuelve a debitar.
+Reglas:
 
-## Transferencias y Concurrencia
+- Misma key y mismo body retorna la respuesta original.
+- Misma key y body diferente retorna `409 Conflict`.
+- La key se persiste en PostgreSQL y está protegida por una restricción única.
+- Los inserts duplicados concurrentes se controlan con la restricción de base de datos, no con estado en memoria.
 
-La transferencia se ejecuta dentro de `@Transactional`. El repositorio de cuentas usa `PESSIMISTIC_WRITE` para bloquear ambas cuentas en orden estable por número de cuenta. Esto reduce riesgo de doble débito y deadlocks en transferencias cruzadas. `@Version` queda como defensa adicional para flujos de menor contención donde optimistic locking sea suficiente.
+## Patrón Outbox
 
-## Outbox Pattern
+Cuando una transferencia se completa, la aplicación guarda `TransferCompleted` en `outbox_events` dentro de la misma transacción que el débito, crédito, movimientos y auditoría. `OutboxPublisherJob` simula la publicación y marca eventos como `PUBLISHED`.
 
-Cuando una transferencia se completa o una cuenta se bloquea, se crea un evento en `outbox_events` dentro de la misma transacción SQL. `OutboxPublisherJob` simula la publicación y marca eventos como `PUBLISHED`. En producción, ese job publicaría en Kafka, RabbitMQ, SNS/SQS u otro broker.
+Esto demuestra una solución al problema de dual-write: no conviene confirmar el estado de negocio y publicar un evento externo como dos operaciones independientes sin coordinación.
 
-## SQL y MongoDB
+## SQL Como Fuente de Verdad
 
-PostgreSQL es la fuente de verdad para saldos, transferencias, movimientos, auditoría e idempotencia. MongoDB almacena `customer_movement_view` como vista de lectura eventualmente consistente. Si Mongo no tiene proyección disponible, el endpoint de movimientos de cliente cae a SQL.
+PostgreSQL es dueño de:
 
-## Seguridad
+- saldos de cuentas;
+- transferencias;
+- movimientos financieros;
+- registros de idempotencia;
+- auditoría;
+- eventos outbox.
 
-La seguridad actual usa Basic Auth e in-memory users para laboratorio. Roles:
+Esto aporta garantías ACID, constraints, consistencia transaccional y recuperación confiable.
 
-- `ROLE_CUSTOMER`: consulta productos, saldos, movimientos y realiza transferencias.
-- `ROLE_OPERATOR`: bloquea cuentas y consulta auditoría.
-- `ROLE_ADMIN`: acceso administrativo.
+## MongoDB Como Modelo de Lectura
 
-Evolución natural: OAuth2/OIDC con JWT, scopes por producto, claims de cliente, autorización ABAC y auditoría enriquecida.
+MongoDB almacena `customer_movement_view` como modelo de lectura eventualmente consistente. Es útil para consultas de historial por cliente, pero puede reconstruirse desde PostgreSQL.
+
+Si MongoDB no está disponible o la vista todavía no existe, el endpoint de movimientos puede caer a SQL.
 
 ## Observabilidad
 
-Cada request tiene `X-Correlation-ID`; si no llega, se genera uno y se agrega al MDC de logs y respuestas de error. Métricas custom:
+El proyecto incluye:
 
-- `bank.transfers.successful`
-- `bank.transfers.failed`
-- `bank.accounts.blocked`
-- `bank.outbox.events.pending`
+- propagación de `X-Correlation-ID`;
+- logs estructurados con MDC;
+- payload estándar de error con correlation ID;
+- health endpoints de Actuator;
+- contadores Micrometer para transferencias exitosas y fallidas;
+- métrica para cuentas bloqueadas;
+- gauge para eventos outbox pendientes.
 
 ## Kubernetes
+
+Los manifiestos están en [k8s](k8s).
+
+Aplicar localmente:
 
 ```bash
 kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/
+```
+
+Comandos útiles:
+
+```bash
 kubectl rollout status deployment/bank-core-app -n bank-core
 kubectl rollout undo deployment/bank-core-app -n bank-core
 ```
 
-Readiness indica si el pod puede recibir tráfico. Liveness indica si debe reiniciarse. Secrets no deben ir en ConfigMap; en producción usar Secrets Manager/External Secrets/KMS.
+El deployment de la app incluye readiness probe, liveness probe, requests/limits de recursos y dos réplicas. Los manifiestos locales/demo incluyen PostgreSQL, MongoDB y Redis; en producción deberían reemplazarse por servicios gestionados.
 
-## Preguntas de Entrevista
+## Despliegue Conceptual en AWS
 
-- Como evitas doble débito si el cliente reintenta por timeout?
-- Por qué el outbox debe guardarse en la misma transacción que la transferencia?
-- Cuándo usar optimistic locking vs pessimistic locking?
-- Cómo reconciliarías MongoDB si una proyección falla?
-- Qué métricas alertarías en transferencias internas?
-- Cómo diseñarías autorización real para que un cliente solo vea sus productos?
-- Qué RTO/RPO propondrías para un core bancario?
+Ver [docs/aws-architecture.md](docs/aws-architecture.md).
 
-Ver también:
+Dirección recomendada para producción:
 
-- `docs/interview-notes.md`
-- `docs/aws-architecture.md`
+- ALB o API Gateway.
+- EKS o ECS.
+- RDS PostgreSQL Multi-AZ.
+- MongoDB Atlas o DocumentDB.
+- ElastiCache Redis.
+- SQS/SNS/MSK para eventos.
+- Secrets Manager y KMS.
+- CloudWatch, Prometheus y tracing.
+- WAF, subnets privadas y security groups estrictos.
+
+## Por Qué Este Proyecto Sirve Para Entrevistas Backend Bancarias
+
+Este proyecto permite explicar temas que suelen diferenciar trabajo backend intermedio de ingeniería backend senior en sistemas financieros:
+
+- límites transaccionales;
+- consistencia de saldos;
+- control de concurrencia;
+- escrituras idempotentes;
+- auditoría;
+- observabilidad;
+- consistencia eventual;
+- trade-offs de modelos de lectura;
+- operación en Kubernetes;
+- arquitectura gestionada en AWS;
+- brechas de seguridad productiva y evolución.
+
+## Documentación
+
+- [Diagramas de arquitectura](docs/architecture.md)
+- [Guía para defender el proyecto en entrevista](docs/interview-defense.md)
+- [Arquitectura AWS](docs/aws-architecture.md)
+- [Notas de entrevista](docs/interview-notes.md)
+- [Requests HTTP](docs/http-requests)
+
+## Topics Sugeridos Para GitHub
+
+```text
+java, spring-boot, backend, banking, postgresql, mongodb, docker, kubernetes, aws, microservices, outbox-pattern, idempotency, testcontainers, observability
+```

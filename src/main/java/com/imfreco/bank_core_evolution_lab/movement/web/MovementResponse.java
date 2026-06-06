@@ -2,7 +2,6 @@ package com.imfreco.bank_core_evolution_lab.movement.web;
 
 import com.imfreco.bank_core_evolution_lab.account.domain.Currency;
 import com.imfreco.bank_core_evolution_lab.movement.domain.MovementType;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -16,6 +15,4 @@ public record MovementResponse(
         Currency currency,
         BigDecimal balanceAfterMovement,
         String description,
-        Instant createdAt
-) {
-}
+        Instant createdAt) {}
