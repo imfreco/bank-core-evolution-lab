@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bank-core-mongodb
+  namespace: bank-core
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bank-core-mongodb
+  template:
+    metadata:
+      labels:
+        app: bank-core-mongodb
+    spec:
+      containers:
+        - name: mongodb
+          image: mongo:7
+          ports:
+            - containerPort: 27017
+          env:
+            - name: MONGO_INITDB_DATABASE
+              value: bank_read_model
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bank-core-mongodb
+  namespace: bank-core
+spec:
+  selector:
+    app: bank-core-mongodb
+  ports:
+    - port: 27017
+      targetPort: 27017
+  # Solo demo/local. En produccion usar MongoDB Atlas o DocumentDB con backups, cifrado y redes privadas.

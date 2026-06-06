@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bank-core-app
+  namespace: bank-core
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bank-core-app
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: bank-core-app
+    spec:
+      containers:
+        - name: app
+          image: bank-core-evolution-lab:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: bank-core-config
+            - secretRef:
+                name: bank-core-secret
+          readinessProbe:
+            # Readiness decide si el pod puede recibir trafico; evita enviar requests mientras arranca o migra.
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            # Liveness decide si Kubernetes debe reiniciar el contenedor cuando queda irrecuperable.
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          # Rollback: usar `kubectl rollout undo deployment/bank-core-app -n bank-core`.

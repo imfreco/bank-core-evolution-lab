@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bank-core-postgres
+  namespace: bank-core
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bank-core-postgres
+  template:
+    metadata:
+      labels:
+        app: bank-core-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: bank_core
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: bank-core-secret
+                  key: SPRING_DATASOURCE_USERNAME
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bank-core-secret
+                  key: SPRING_DATASOURCE_PASSWORD
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bank-core-postgres
+  namespace: bank-core
+spec:
+  selector:
+    app: bank-core-postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+  # Solo demo/local. En banco usar RDS PostgreSQL Multi-AZ, no Postgres dentro del cluster.

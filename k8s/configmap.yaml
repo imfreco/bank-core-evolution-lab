@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bank-core-config
+  namespace: bank-core
+data:
+  SERVER_PORT: "8080"
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://bank-core-postgres:5432/bank_core"
+  SPRING_DATA_MONGODB_URI: "mongodb://bank-core-mongodb:27017/bank_read_model"
+  SPRING_DATA_REDIS_HOST: "bank-core-redis"
+  SPRING_DATA_REDIS_PORT: "6379"
+  BANK_OUTBOX_PUBLISHER_ENABLED: "true"
+  BANK_MONGODB_PROJECTION_ENABLED: "true"
+  # ConfigMap guarda configuracion no sensible. Secretos como passwords deben ir en Secret o en un gestor externo.

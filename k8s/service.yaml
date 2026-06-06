@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: bank-core-app
+  namespace: bank-core
+spec:
+  type: ClusterIP
+  selector:
+    app: bank-core-app
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
