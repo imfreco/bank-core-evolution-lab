@@ -10,6 +10,16 @@ X-Correlation-ID: http-login-customer-001
   "password": "customer123"
 }
 
+### Login como customer2
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+X-Correlation-ID: http-login-customer2-001
+
+{
+  "username": "customer2",
+  "password": "customer2123"
+}
+
 ### Login como operator
 POST {{baseUrl}}/api/v1/auth/login
 Content-Type: application/json

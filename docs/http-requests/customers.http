@@ -1,8 +1,10 @@
 @baseUrl = http://localhost:8080
 @customerToken = pega-aqui-el-accessToken-del-login-customer
+@customer2Token = pega-aqui-el-accessToken-del-login-customer2
 @operatorToken = pega-aqui-el-accessToken-del-login-operator
 @adminToken = pega-aqui-el-accessToken-del-login-admin
 @seedCustomerId = 11111111-1111-1111-1111-111111111111
+@seedCustomer2Id = 22222222-2222-2222-2222-222222222222
 
 ### Crear cliente
 POST {{baseUrl}}/api/v1/customers
@@ -14,7 +16,9 @@ X-Correlation-ID: http-create-customer-001
   "documentType": "CC",
   "documentNumber": "90000001",
   "fullName": "Laura Demo",
-  "email": "laura.demo@example.com"
+  "email": "laura.demo@example.com",
+  "username": "laura.demo",
+  "password": "LauraDemo123"
 }
 
 ### Consultar cliente inicial
@@ -26,3 +30,13 @@ X-Correlation-ID: http-get-customer-001
 GET {{baseUrl}}/api/v1/customers/{{seedCustomerId}}/products
 Authorization: Bearer {{customerToken}}
 X-Correlation-ID: http-get-products-001
+
+### Consultar productos del segundo cliente con su propio token
+GET {{baseUrl}}/api/v1/customers/{{seedCustomer2Id}}/products
+Authorization: Bearer {{customer2Token}}
+X-Correlation-ID: http-get-products-customer2-001
+
+### Intento no autorizado: customer2 consultando productos de customer
+GET {{baseUrl}}/api/v1/customers/{{seedCustomerId}}/products
+Authorization: Bearer {{customer2Token}}
+X-Correlation-ID: http-get-products-forbidden-001

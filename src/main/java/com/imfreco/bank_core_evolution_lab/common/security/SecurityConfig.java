@@ -20,14 +20,15 @@ public class SecurityConfig {
 
     /*
      * Demo security only. TODO production-grade: Validate authenticated customer
-     * ownership before returning customer/account/movement data, rotate the JWT
-     * secret with a secrets manager, and evolve this lab to OAuth2/OIDC.
+     * ownership in transactional self-service flows, rotate the JWT secret with a
+     * secrets manager, and evolve this lab to OAuth2/OIDC.
      */
     @Bean
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             JwtAuthenticationFilter jwtAuthenticationFilter,
-            RestAuthenticationEntryPoint authenticationEntryPoint)
+            RestAuthenticationEntryPoint authenticationEntryPoint,
+            RestAccessDeniedHandler accessDeniedHandler)
             throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
@@ -50,7 +51,10 @@ public class SecurityConfig {
                                         .anyRequest()
                                         .authenticated())
                 .exceptionHandling(
-                        exception -> exception.authenticationEntryPoint(authenticationEntryPoint))
+                        exception ->
+                                exception
+                                        .authenticationEntryPoint(authenticationEntryPoint)
+                                        .accessDeniedHandler(accessDeniedHandler))
                 .addFilterBefore(
                         jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();

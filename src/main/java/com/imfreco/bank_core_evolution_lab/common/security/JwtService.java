@@ -10,6 +10,7 @@ import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
@@ -45,6 +46,9 @@ public class JwtService {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("sub", user.username());
         payload.put("roles", user.roles());
+        if (user.customerId() != null) {
+            payload.put("customerId", user.customerId().toString());
+        }
         payload.put("iat", issuedAt);
         payload.put("exp", expiresAt);
 
@@ -82,7 +86,12 @@ public class JwtService {
             throw new IllegalArgumentException("JWT roles are required");
         }
 
-        return new AuthenticatedUser(username, roles);
+        UUID customerId = null;
+        if (payload.hasNonNull("customerId") && !payload.path("customerId").asText().isBlank()) {
+            customerId = UUID.fromString(payload.path("customerId").asText());
+        }
+
+        return new AuthenticatedUser(username, roles, customerId);
     }
 
     public long expirationSeconds() {

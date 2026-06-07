@@ -21,6 +21,7 @@ public class AuthService {
                 "Bearer",
                 jwtService.expirationSeconds(),
                 user.username(),
+                user.customerId(),
                 user.roles());
     }
 }

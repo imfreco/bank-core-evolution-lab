@@ -43,7 +43,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     jwtService.validate(authorizationHeader.substring(BEARER_PREFIX.length()));
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
-                            user.username(),
+                            user,
                             null,
                             user.roles().stream()
                                     .map(role -> new SimpleGrantedAuthority("ROLE_" + role))

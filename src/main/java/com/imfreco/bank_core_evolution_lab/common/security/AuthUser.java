@@ -10,6 +10,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -26,6 +27,9 @@ public class AuthUser {
     @Column(name = "password_hash", nullable = false, length = 120)
     private String passwordHash;
 
+    @Column(name = "customer_id", unique = true)
+    private UUID customerId;
+
     @Column(nullable = false)
     private boolean enabled;
 
@@ -38,6 +42,20 @@ public class AuthUser {
     private Instant createdAt;
 
     protected AuthUser() {}
+
+    public AuthUser(
+            String username,
+            String passwordHash,
+            UUID customerId,
+            boolean enabled,
+            Collection<String> roles) {
+        this.id = UUID.randomUUID();
+        this.username = username;
+        this.passwordHash = passwordHash;
+        this.customerId = customerId;
+        this.enabled = enabled;
+        this.roles = new HashSet<>(roles);
+    }
 
     @PrePersist
     void prePersist() {
@@ -56,6 +74,10 @@ public class AuthUser {
 
     public String getPasswordHash() {
         return passwordHash;
+    }
+
+    public UUID getCustomerId() {
+        return customerId;
     }
 
     public boolean isEnabled() {

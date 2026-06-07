@@ -20,13 +20,13 @@ public class MovementController {
     }
 
     @GetMapping("/accounts/{accountId}/movements")
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR','CUSTOMER')")
+    @PreAuthorize("@authorizationService.canAccessAccount(#accountId)")
     public List<MovementResponse> accountMovements(@PathVariable UUID accountId) {
         return movementService.findByAccount(accountId);
     }
 
     @GetMapping("/customers/{customerId}/movements")
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR','CUSTOMER')")
+    @PreAuthorize("@authorizationService.canAccessCustomer(#customerId)")
     public CustomerMovementViewResponse customerMovements(@PathVariable UUID customerId) {
         return movementService.findByCustomer(customerId);
     }

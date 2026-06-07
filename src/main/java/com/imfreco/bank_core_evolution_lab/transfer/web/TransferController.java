@@ -37,14 +37,14 @@ public class TransferController {
         return transferService.create(
                 request,
                 idempotencyKey,
-                ActorContext.actor(principal),
+                principal,
                 ActorContext.channel(channel),
                 CorrelationIdFilter.currentCorrelationId());
     }
 
     @GetMapping("/{transferReference}")
     @PreAuthorize("hasAnyRole('ADMIN','OPERATOR','CUSTOMER')")
-    public TransferResponse get(@PathVariable String transferReference) {
-        return transferService.findByReference(transferReference);
+    public TransferResponse get(@PathVariable String transferReference, Principal principal) {
+        return transferService.findByReference(transferReference, principal);
     }
 }

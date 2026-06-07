@@ -31,13 +31,13 @@ public class CustomerController {
     }
 
     @GetMapping("/{customerId}")
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR','CUSTOMER')")
+    @PreAuthorize("@authorizationService.canAccessCustomer(#customerId)")
     public CustomerResponse get(@PathVariable UUID customerId) {
         return customerService.get(customerId);
     }
 
     @GetMapping("/{customerId}/products")
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR','CUSTOMER')")
+    @PreAuthorize("@authorizationService.canAccessCustomer(#customerId)")
     public CustomerProductsResponse products(@PathVariable UUID customerId) {
         return customerService.getProducts(customerId);
     }

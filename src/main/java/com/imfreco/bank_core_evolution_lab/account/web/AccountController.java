@@ -35,13 +35,13 @@ public class AccountController {
     }
 
     @GetMapping("/{accountId}")
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR','CUSTOMER')")
+    @PreAuthorize("@authorizationService.canAccessAccount(#accountId)")
     public AccountResponse get(@PathVariable UUID accountId) {
         return accountService.get(accountId);
     }
 
     @GetMapping("/{accountId}/balance")
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR','CUSTOMER')")
+    @PreAuthorize("@authorizationService.canAccessAccount(#accountId)")
     public BalanceResponse balance(@PathVariable UUID accountId) {
         return accountService.getBalance(accountId);
     }

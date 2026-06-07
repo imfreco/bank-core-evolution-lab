@@ -29,6 +29,7 @@ public class DatabaseUserService {
             throw new AuthenticationFailedException();
         }
 
-        return new AuthenticatedUser(user.getUsername(), new ArrayList<>(user.getRoles()));
+        return new AuthenticatedUser(
+                user.getUsername(), new ArrayList<>(user.getRoles()), user.getCustomerId());
     }
 }

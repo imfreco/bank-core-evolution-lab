@@ -55,7 +55,7 @@ Usaría ALB o API Gateway en la entrada, EKS o ECS para cómputo, RDS PostgreSQL
 ## 14. ¿Qué mejorarías para producción?
 
 - Reemplazar JWT demo local por OAuth2/OIDC y JWT firmado por un proveedor de identidad.
-- Validar ownership del cliente antes de retornar datos de customer/account/movement.
+- Reforzar transferencias con límites transaccionales, reglas antifraude y evaluación de riesgo.
 - Agregar mTLS entre servicios internos.
 - Agregar rate limiting, validaciones antifraude y autorización más fuerte.
 - Agregar auditoría inmutable y políticas de retención.
@@ -63,11 +63,11 @@ Usaría ALB o API Gateway en la entrada, EKS o ECS para cómputo, RDS PostgreSQL
 - Agregar reconciliación y alertas por lag de proyección en MongoDB.
 - Agregar pruebas de performance y resiliencia.
 
-TODO production-grade: validar ownership del cliente autenticado antes de retornar datos de customer/account/movement.
+TODO production-grade: complementar la validación de ownership con reglas antifraude, límites diarios, listas restrictivas y monitoreo transaccional.
 
 ## 15. ¿Qué trade-offs tiene esta solución?
 
-El diseño prioriza claridad y valor para entrevista sobre complejidad productiva completa. El login JWT consulta usuarios persistidos en PostgreSQL y compara passwords contra hashes bcrypt, pero sigue siendo una autenticación de laboratorio y no reemplaza OAuth2/OIDC en producción. La proyección MongoDB es eventualmente consistente. El publicador outbox es simulado. El bloqueo pesimista mejora la seguridad sobre saldos, pero puede reducir throughput bajo alta contención.
+El diseño prioriza claridad y valor para entrevista sobre complejidad productiva completa. El login JWT consulta usuarios persistidos en PostgreSQL, cada usuario cliente está enlazado a un `customer_id`, las lecturas de customer/account/movement validan ownership y las transferencias iniciadas por clientes solo pueden debitar cuentas origen propias. Aun así, sigue siendo una autenticación de laboratorio y no reemplaza OAuth2/OIDC en producción. La proyección MongoDB es eventualmente consistente. El publicador outbox es simulado. El bloqueo pesimista mejora la seguridad sobre saldos, pero puede reducir throughput bajo alta contención.
 
 ## Elevator Pitch Del Proyecto En 90 Segundos
 

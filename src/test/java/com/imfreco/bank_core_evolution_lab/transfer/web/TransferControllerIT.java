@@ -146,6 +146,31 @@ class TransferControllerIT {
                 .andExpect(jsonPath("$.error").value("DUPLICATE_IDEMPOTENCY_KEY"));
     }
 
+    @Test
+    void customerCannotTransferFromAnotherCustomersSourceAccount() throws Exception {
+        String body =
+                """
+                {
+                  "sourceAccountNumber": "1000000002",
+                  "targetAccountNumber": "1000000001",
+                  "amount": 1000.00,
+                  "currency": "COP"
+                }
+                """;
+
+        mockMvc.perform(
+                        post("/api/v1/transfers")
+                                .header("Authorization", bearerToken("customer", "CUSTOMER"))
+                                .header("Idempotency-Key", UUID.randomUUID().toString())
+                                .header("X-Correlation-ID", "it-correlation")
+                                .contentType("application/json")
+                                .content(body))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("FORBIDDEN"));
+
+        assertThat(outboxEventRepository.countByStatus(OutboxEventStatus.PENDING)).isZero();
+    }
+
     private org.springframework.test.web.servlet.ResultActions postTransfer(
             String idempotencyKey, String amount) throws Exception {
         String body =
@@ -169,6 +194,11 @@ class TransferControllerIT {
     }
 
     private String bearerToken(String username, String role) {
-        return "Bearer " + jwtService.generateToken(new AuthenticatedUser(username, List.of(role)));
+        return "Bearer "
+                + jwtService.generateToken(
+                        new AuthenticatedUser(
+                                username,
+                                List.of(role),
+                                UUID.fromString("11111111-1111-1111-1111-111111111111")));
     }
 }

@@ -7,6 +7,7 @@ import java.util.List;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -55,9 +56,9 @@ public class GlobalExceptionHandler {
                 List.of());
     }
 
-    @ExceptionHandler(DuplicateIdempotencyKeyException.class)
+    @ExceptionHandler({DuplicateIdempotencyKeyException.class, DuplicateUsernameException.class})
     ResponseEntity<ErrorResponse> handleDuplicate(
-            DuplicateIdempotencyKeyException exception, HttpServletRequest request) {
+            DomainException exception, HttpServletRequest request) {
         return build(
                 HttpStatus.CONFLICT,
                 exception.errorCode(),
@@ -73,6 +74,17 @@ public class GlobalExceptionHandler {
                 HttpStatus.UNAUTHORIZED,
                 exception.errorCode(),
                 exception.getMessage(),
+                request,
+                List.of());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    ResponseEntity<ErrorResponse> handleAccessDenied(
+            AccessDeniedException exception, HttpServletRequest request) {
+        return build(
+                HttpStatus.FORBIDDEN,
+                "FORBIDDEN",
+                "You are not allowed to access this resource",
                 request,
                 List.of());
     }

@@ -145,6 +145,7 @@ Estas credenciales se siembran por Flyway en las tablas `auth_users` y `auth_use
 
 ```text
 customer / customer123
+customer2 / customer2123
 operator / operator123
 admin    / admin123
 ```
@@ -171,6 +172,7 @@ Respuesta resumida:
   "tokenType": "Bearer",
   "expiresInSeconds": 3600,
   "username": "customer",
+  "customerId": "11111111-1111-1111-1111-111111111111",
   "roles": ["CUSTOMER"]
 }
 ```
@@ -183,11 +185,11 @@ Authorization: Bearer <jwt>
 
 Roles:
 
-- `ROLE_CUSTOMER`: puede consultar y transferir en la demo.
+- `ROLE_CUSTOMER`: puede consultar sus propios datos, productos, cuentas y movimientos.
 - `ROLE_OPERATOR`: puede bloquear cuentas y consultar auditoría.
 - `ROLE_ADMIN`: acceso administrativo.
 
-Nota de producción: este JWT es una implementación demo firmada con HMAC local. Una implementación bancaria debería evolucionar a OAuth2/OIDC, JWT firmado por un IdP, scopes/claims, validación de ownership por cliente, mTLS, Secrets Manager, rotación de secretos, cifrado, WAF y rate limiting.
+Nota de producción: este JWT es una implementación demo firmada con HMAC local. Una implementación bancaria debería evolucionar a OAuth2/OIDC, JWT firmado por un IdP, scopes/claims más finos, mTLS, Secrets Manager, rotación de secretos, cifrado, WAF y rate limiting.
 
 ## Datos Iniciales
 
