@@ -1,4 +1,4 @@
-package com.imfreco.bank_core_evolution_lab.transfer.web;
+package com.imfreco.bank_core_evolution_lab.transfer.infrastructure.adapter.in.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
@@ -12,7 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.imfreco.bank_core_evolution_lab.common.security.AuthenticatedUser;
 import com.imfreco.bank_core_evolution_lab.common.security.JwtService;
 import com.imfreco.bank_core_evolution_lab.outbox.domain.OutboxEventStatus;
-import com.imfreco.bank_core_evolution_lab.outbox.infrastructure.OutboxEventRepository;
+import com.imfreco.bank_core_evolution_lab.outbox.infrastructure.adapter.out.persistence.OutboxEventRepository;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;

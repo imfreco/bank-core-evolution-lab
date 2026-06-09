@@ -9,29 +9,28 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.imfreco.bank_core_evolution_lab.account.application.port.out.AccountRepositoryPort;
 import com.imfreco.bank_core_evolution_lab.account.domain.Account;
 import com.imfreco.bank_core_evolution_lab.account.domain.AccountType;
 import com.imfreco.bank_core_evolution_lab.account.domain.Currency;
-import com.imfreco.bank_core_evolution_lab.account.infrastructure.AccountRepository;
-import com.imfreco.bank_core_evolution_lab.audit.application.AuditService;
-import com.imfreco.bank_core_evolution_lab.common.config.BankMetrics;
+import com.imfreco.bank_core_evolution_lab.audit.application.port.out.AuditRecorderPort;
+import com.imfreco.bank_core_evolution_lab.common.application.port.out.BankMetricsPort;
+import com.imfreco.bank_core_evolution_lab.common.application.port.out.IdempotencyPort;
+import com.imfreco.bank_core_evolution_lab.common.application.security.AuthenticatedActor;
+import com.imfreco.bank_core_evolution_lab.common.exception.ForbiddenOperationException;
 import com.imfreco.bank_core_evolution_lab.common.exception.InsufficientFundsException;
-import com.imfreco.bank_core_evolution_lab.common.idempotency.IdempotencyService;
-import com.imfreco.bank_core_evolution_lab.common.security.AuthenticatedUser;
-import com.imfreco.bank_core_evolution_lab.movement.application.MovementService;
-import com.imfreco.bank_core_evolution_lab.outbox.application.OutboxService;
+import com.imfreco.bank_core_evolution_lab.movement.application.port.out.MovementRecorderPort;
+import com.imfreco.bank_core_evolution_lab.outbox.application.port.out.OutboxEventCreatorPort;
+import com.imfreco.bank_core_evolution_lab.transfer.application.port.in.CreateTransferCommand;
+import com.imfreco.bank_core_evolution_lab.transfer.application.port.in.TransferResult;
+import com.imfreco.bank_core_evolution_lab.transfer.application.port.out.TransferRepositoryPort;
 import com.imfreco.bank_core_evolution_lab.transfer.domain.Transfer;
 import com.imfreco.bank_core_evolution_lab.transfer.domain.TransferStatus;
-import com.imfreco.bank_core_evolution_lab.transfer.infrastructure.TransferRepository;
-import com.imfreco.bank_core_evolution_lab.transfer.web.TransferRequest;
-import com.imfreco.bank_core_evolution_lab.transfer.web.TransferResponse;
 import java.math.BigDecimal;
-import java.security.Principal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.springframework.security.access.AccessDeniedException;
 
 class TransferServiceTest {
 
@@ -39,13 +38,13 @@ class TransferServiceTest {
     private static final UUID OTHER_CUSTOMER_ID =
             UUID.fromString("22222222-2222-2222-2222-222222222222");
 
-    private final AccountRepository accountRepository = mock(AccountRepository.class);
-    private final TransferRepository transferRepository = mock(TransferRepository.class);
-    private final MovementService movementService = mock(MovementService.class);
-    private final IdempotencyService idempotencyService = mock(IdempotencyService.class);
-    private final AuditService auditService = mock(AuditService.class);
-    private final OutboxService outboxService = mock(OutboxService.class);
-    private final BankMetrics bankMetrics = mock(BankMetrics.class);
+    private final AccountRepositoryPort accountRepository = mock(AccountRepositoryPort.class);
+    private final TransferRepositoryPort transferRepository = mock(TransferRepositoryPort.class);
+    private final MovementRecorderPort movementService = mock(MovementRecorderPort.class);
+    private final IdempotencyPort idempotencyService = mock(IdempotencyPort.class);
+    private final AuditRecorderPort auditService = mock(AuditRecorderPort.class);
+    private final OutboxEventCreatorPort outboxService = mock(OutboxEventCreatorPort.class);
+    private final BankMetricsPort bankMetrics = mock(BankMetricsPort.class);
     private final TransferService service =
             new TransferService(
                     accountRepository,
@@ -58,25 +57,20 @@ class TransferServiceTest {
 
     @Test
     void transfersMoneyAtomicallyAndCreatesAuditMovementAndOutbox() {
-        TransferRequest request =
-                new TransferRequest(
-                        "1000000001", "1000000002", new BigDecimal("10000.00"), Currency.COP);
+        CreateTransferCommand command =
+                command("1000000001", "1000000002", new BigDecimal("10000.00"), Currency.COP);
         Account source = account("1000000001", CUSTOMER_ID, "100000.00");
         Account target = account("1000000002", OTHER_CUSTOMER_ID, "50000.00");
         when(accountRepository.findByAccountNumber("1000000001")).thenReturn(Optional.of(source));
         when(idempotencyService.findCompletedResponseOrCreateRecord(
-                        eq("idem-1"),
-                        eq(request),
-                        eq("INTERNAL_TRANSFER"),
-                        eq(TransferResponse.class)))
+                        eq("idem-1"), any(), eq("INTERNAL_TRANSFER"), eq(TransferResult.class)))
                 .thenReturn(Optional.empty());
         when(accountRepository.findAllByAccountNumberInForUpdate(any()))
                 .thenReturn(List.of(source, target));
         when(transferRepository.save(any(Transfer.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        TransferResponse response =
-                service.create(request, "idem-1", customerPrincipal(CUSTOMER_ID), "WEB", "corr-1");
+        TransferResult response = service.create(command);
 
         assertThat(response.status()).isEqualTo(TransferStatus.COMPLETED);
         assertThat(source.getAvailableBalance()).isEqualByComparingTo("90000.00");
@@ -105,38 +99,33 @@ class TransferServiceTest {
                         eq("corr-1"),
                         any());
         verify(outboxService).create(eq("Transfer"), any(), eq("TransferCompleted"), any());
-        verify(idempotencyService).complete(eq("idem-1"), any(TransferResponse.class));
+        verify(idempotencyService).complete(eq("idem-1"), any(TransferResult.class));
         verify(bankMetrics).incrementSuccessfulTransfers();
     }
 
     @Test
     void returnsStoredIdempotentResponseWithoutDebitingAgain() {
-        TransferRequest request =
-                new TransferRequest(
-                        "1000000001", "1000000002", new BigDecimal("10000.00"), Currency.COP);
-        TransferResponse stored =
-                new TransferResponse(
+        CreateTransferCommand command =
+                command("1000000001", "1000000002", new BigDecimal("10000.00"), Currency.COP);
+        TransferResult stored =
+                new TransferResult(
                         "tx-1",
                         UUID.randomUUID(),
                         "1000000001",
                         UUID.randomUUID(),
                         "1000000002",
-                        request.amount(),
+                        command.amount(),
                         Currency.COP,
                         TransferStatus.COMPLETED,
                         java.time.Instant.now(),
                         java.time.Instant.now());
         when(idempotencyService.findCompletedResponseOrCreateRecord(
-                        eq("idem-1"),
-                        eq(request),
-                        eq("INTERNAL_TRANSFER"),
-                        eq(TransferResponse.class)))
+                        eq("idem-1"), any(), eq("INTERNAL_TRANSFER"), eq(TransferResult.class)))
                 .thenReturn(Optional.of(stored));
         when(accountRepository.findByAccountNumber("1000000001"))
                 .thenReturn(Optional.of(account("1000000001", CUSTOMER_ID, "100000.00")));
 
-        TransferResponse response =
-                service.create(request, "idem-1", customerPrincipal(CUSTOMER_ID), "WEB", "corr-1");
+        TransferResult response = service.create(command);
 
         assertThat(response.transferReference()).isEqualTo("tx-1");
         verifyNoInteractions(transferRepository, movementService, auditService, outboxService);
@@ -144,14 +133,10 @@ class TransferServiceTest {
 
     @Test
     void failsWhenSourceHasInsufficientFunds() {
-        TransferRequest request =
-                new TransferRequest(
-                        "1000000001", "1000000002", new BigDecimal("1000000.00"), Currency.COP);
+        CreateTransferCommand command =
+                command("1000000001", "1000000002", new BigDecimal("1000000.00"), Currency.COP);
         when(idempotencyService.findCompletedResponseOrCreateRecord(
-                        eq("idem-1"),
-                        eq(request),
-                        eq("INTERNAL_TRANSFER"),
-                        eq(TransferResponse.class)))
+                        eq("idem-1"), any(), eq("INTERNAL_TRANSFER"), eq(TransferResult.class)))
                 .thenReturn(Optional.empty());
         Account source = account("1000000001", CUSTOMER_ID, "100.00");
         Account target = account("1000000002", OTHER_CUSTOMER_ID, "50000.00");
@@ -161,35 +146,20 @@ class TransferServiceTest {
         when(transferRepository.save(any(Transfer.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        assertThatThrownBy(
-                        () ->
-                                service.create(
-                                        request,
-                                        "idem-1",
-                                        customerPrincipal(CUSTOMER_ID),
-                                        "WEB",
-                                        "corr-1"))
+        assertThatThrownBy(() -> service.create(command))
                 .isInstanceOf(InsufficientFundsException.class);
         verify(bankMetrics).incrementFailedTransfers();
     }
 
     @Test
     void customerCannotDebitAccountOwnedByAnotherCustomer() {
-        TransferRequest request =
-                new TransferRequest(
-                        "1000000002", "1000000001", new BigDecimal("10000.00"), Currency.COP);
+        CreateTransferCommand command =
+                command("1000000002", "1000000001", new BigDecimal("10000.00"), Currency.COP);
         Account source = account("1000000002", OTHER_CUSTOMER_ID, "50000.00");
         when(accountRepository.findByAccountNumber("1000000002")).thenReturn(Optional.of(source));
 
-        assertThatThrownBy(
-                        () ->
-                                service.create(
-                                        request,
-                                        "idem-1",
-                                        customerPrincipal(CUSTOMER_ID),
-                                        "WEB",
-                                        "corr-1"))
-                .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> service.create(command))
+                .isInstanceOf(ForbiddenOperationException.class);
 
         verifyNoInteractions(idempotencyService, transferRepository, movementService, auditService);
         verify(bankMetrics).incrementFailedTransfers();
@@ -216,12 +186,28 @@ class TransferServiceTest {
                         () ->
                                 service.findByReference(
                                         transfer.getTransferReference(),
-                                        customerPrincipal(CUSTOMER_ID)))
-                .isInstanceOf(AccessDeniedException.class);
+                                        customerActor(CUSTOMER_ID)))
+                .isInstanceOf(ForbiddenOperationException.class);
     }
 
-    private Principal customerPrincipal(UUID customerId) {
-        return new AuthenticatedUser("customer", List.of("CUSTOMER"), customerId);
+    private CreateTransferCommand command(
+            String sourceAccountNumber,
+            String targetAccountNumber,
+            BigDecimal amount,
+            Currency currency) {
+        return new CreateTransferCommand(
+                sourceAccountNumber,
+                targetAccountNumber,
+                amount,
+                currency,
+                "idem-1",
+                customerActor(CUSTOMER_ID),
+                "WEB",
+                "corr-1");
+    }
+
+    private AuthenticatedActor customerActor(UUID customerId) {
+        return new AuthenticatedActor("customer", List.of("CUSTOMER"), customerId);
     }
 
     private Account account(String accountNumber, UUID customerId, String balance) {

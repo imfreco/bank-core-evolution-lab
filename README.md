@@ -54,27 +54,42 @@ El flujo de transferencia debe ser seguro ante reintentos y llamadas concurrente
 
 ## Resumen de Arquitectura
 
-La estructura de paquetes sigue un estilo limpio/hexagonal simplificado:
+El proyecto está diseñado como un **monolito modular con arquitectura hexagonal por
+módulo de negocio**. No se divide en microservicios porque el flujo principal de
+transferencias requiere consistencia transaccional fuerte entre cuentas,
+movimientos, idempotencia, auditoría y outbox. Separarlo prematuramente convertiría
+una transacción local en un flujo distribuido con sagas y compensaciones.
 
 ```text
 src/main/java/com/imfreco/bank_core_evolution_lab
-├── common
-├── customer
 ├── account
+│   ├── domain
+│   ├── application
+│   │   └── port
+│   │       ├── in
+│   │       └── out
+│   └── infrastructure
+│       └── adapter
+│           ├── in
+│           └── out
+├── customer
 ├── transfer
 ├── movement
 ├── audit
-└── outbox
+├── outbox
+└── common
 ```
 
 Cada módulo de negocio separa:
 
-- `domain`: entidades y enums de negocio.
-- `application`: casos de uso y límites transaccionales.
-- `infrastructure`: repositorios y adaptadores de persistencia.
-- `web`: controladores REST, DTOs y mappers.
+- `domain`: entidades, enums y reglas de negocio.
+- `application`: casos de uso, puertos de entrada y puertos de salida.
+- `infrastructure`: adaptadores REST, persistencia JPA, MongoDB, jobs y publicación simulada.
 
-La capa REST no expone entidades JPA directamente.
+Los controladores REST viven en `infrastructure/adapter/in/web`. Los repositorios
+Spring Data, MongoDB y jobs viven en `infrastructure/adapter/out` o adaptadores
+programados. Los servicios de aplicación dependen de interfaces de puerto, no de
+Spring Data ni de DTOs HTTP.
 
 Los diagramas detallados están en [docs/architecture.md](docs/architecture.md).
 

@@ -2,6 +2,49 @@
 
 Este documento resume la arquitectura técnica de `bank-core-evolution-lab` y las decisiones principales detrás del flujo de transferencias bancarias.
 
+## Decisión Arquitectónica
+
+El sistema se mantiene como **monolito modular hexagonal**, no como microservicios.
+
+La razón es deliberada: el caso crítico de negocio es la transferencia interna, que
+requiere una transacción corta y consistente sobre cuentas, movimientos,
+idempotencia, auditoría y outbox. Separar esos límites en microservicios ahora
+obligaría a resolver sagas, compensaciones, retries distribuidos, versionamiento de
+contratos y observabilidad distribuida antes de que exista una necesidad operativa
+real.
+
+La modularización sí prepara el camino para una extracción futura: cada bounded
+context mantiene su propio `domain`, `application` e `infrastructure`.
+
+## Hexagonal Por Módulo
+
+```text
+account | customer | transfer | movement | audit | outbox
+├── domain
+├── application
+│   ├── port
+│   │   ├── in
+│   │   └── out
+│   └── *Service
+└── infrastructure
+    └── adapter
+        ├── in
+        │   ├── web
+        │   └── scheduler
+        └── out
+            ├── persistence
+            ├── mongo
+            └── publisher
+```
+
+Reglas aplicadas:
+
+- Los adaptadores de entrada llaman puertos de entrada (`UseCase`).
+- Los casos de uso dependen de puertos de salida, no de repositorios Spring Data.
+- Los DTOs HTTP viven en adaptadores web.
+- JPA, MongoDB, jobs, métricas, JWT y publicación simulada son infraestructura.
+- El dominio concentra entidades y reglas de negocio como saldos, estados y bloqueo.
+
 ## Arquitectura General
 
 ```mermaid
@@ -9,7 +52,7 @@ flowchart LR
     Consumer["Cliente / Consumidor API"]
     API["Spring Boot API<br/>REST, Validación, Seguridad"]
     Auth["Auth JWT<br/>auth_users / auth_user_roles"]
-    Transfer["Servicios de Aplicación<br/>Transfer, Account, Customer"]
+    Transfer["Casos de uso hexagonales<br/>Transfer, Account, Customer"]
     PostgreSQL["PostgreSQL<br/>Fuente de Verdad"]
     Outbox["Tabla outbox_events"]
     Publisher["OutboxPublisherJob<br/>Publicador simulado"]

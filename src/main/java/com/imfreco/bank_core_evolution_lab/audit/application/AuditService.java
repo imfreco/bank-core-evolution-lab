@@ -2,23 +2,26 @@ package com.imfreco.bank_core_evolution_lab.audit.application;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.imfreco.bank_core_evolution_lab.audit.application.port.in.AuditLogResult;
+import com.imfreco.bank_core_evolution_lab.audit.application.port.in.AuditLogUseCase;
+import com.imfreco.bank_core_evolution_lab.audit.application.port.out.AuditLogRepositoryPort;
+import com.imfreco.bank_core_evolution_lab.audit.application.port.out.AuditRecorderPort;
 import com.imfreco.bank_core_evolution_lab.audit.domain.AuditLog;
-import com.imfreco.bank_core_evolution_lab.audit.infrastructure.AuditLogRepository;
-import com.imfreco.bank_core_evolution_lab.audit.web.AuditLogResponse;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Service
-public class AuditService {
+public class AuditService implements AuditLogUseCase, AuditRecorderPort {
 
-    private final AuditLogRepository repository;
+    private final AuditLogRepositoryPort repository;
     private final ObjectMapper objectMapper;
 
-    public AuditService(AuditLogRepository repository, ObjectMapper objectMapper) {
+    public AuditService(AuditLogRepositoryPort repository, ObjectMapper objectMapper) {
         this.repository = repository;
         this.objectMapper = objectMapper;
     }
 
+    @Override
     public void record(
             String operationType,
             String entityType,
@@ -38,7 +41,8 @@ public class AuditService {
                         toJson(details)));
     }
 
-    public List<AuditLogResponse> find(String entityType, String entityId) {
+    @Override
+    public List<AuditLogResult> find(String entityType, String entityId) {
         List<AuditLog> logs;
         if (entityType != null
                 && !entityType.isBlank()
@@ -53,8 +57,8 @@ public class AuditService {
         return logs.stream().map(this::toResponse).toList();
     }
 
-    private AuditLogResponse toResponse(AuditLog log) {
-        return new AuditLogResponse(
+    private AuditLogResult toResponse(AuditLog log) {
+        return new AuditLogResult(
                 log.getId(),
                 log.getOperationType(),
                 log.getEntityType(),

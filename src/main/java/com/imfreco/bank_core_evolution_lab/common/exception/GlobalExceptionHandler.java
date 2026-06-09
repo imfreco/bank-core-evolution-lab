@@ -78,9 +78,9 @@ public class GlobalExceptionHandler {
                 List.of());
     }
 
-    @ExceptionHandler(AccessDeniedException.class)
+    @ExceptionHandler({AccessDeniedException.class, ForbiddenOperationException.class})
     ResponseEntity<ErrorResponse> handleAccessDenied(
-            AccessDeniedException exception, HttpServletRequest request) {
+            RuntimeException exception, HttpServletRequest request) {
         return build(
                 HttpStatus.FORBIDDEN,
                 "FORBIDDEN",

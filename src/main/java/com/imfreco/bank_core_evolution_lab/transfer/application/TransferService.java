@@ -1,96 +1,86 @@
 package com.imfreco.bank_core_evolution_lab.transfer.application;
 
+import com.imfreco.bank_core_evolution_lab.account.application.port.out.AccountRepositoryPort;
 import com.imfreco.bank_core_evolution_lab.account.domain.Account;
-import com.imfreco.bank_core_evolution_lab.account.infrastructure.AccountRepository;
-import com.imfreco.bank_core_evolution_lab.audit.application.AuditService;
-import com.imfreco.bank_core_evolution_lab.common.api.ActorContext;
-import com.imfreco.bank_core_evolution_lab.common.config.BankMetrics;
+import com.imfreco.bank_core_evolution_lab.account.domain.Currency;
+import com.imfreco.bank_core_evolution_lab.audit.application.port.out.AuditRecorderPort;
+import com.imfreco.bank_core_evolution_lab.common.application.port.out.BankMetricsPort;
+import com.imfreco.bank_core_evolution_lab.common.application.port.out.IdempotencyPort;
+import com.imfreco.bank_core_evolution_lab.common.application.security.AuthenticatedActor;
 import com.imfreco.bank_core_evolution_lab.common.exception.AccountNotFoundException;
 import com.imfreco.bank_core_evolution_lab.common.exception.CurrencyMismatchException;
 import com.imfreco.bank_core_evolution_lab.common.exception.DomainException;
+import com.imfreco.bank_core_evolution_lab.common.exception.ForbiddenOperationException;
 import com.imfreco.bank_core_evolution_lab.common.exception.InvalidTransferException;
 import com.imfreco.bank_core_evolution_lab.common.exception.TransferNotFoundException;
-import com.imfreco.bank_core_evolution_lab.common.idempotency.IdempotencyService;
-import com.imfreco.bank_core_evolution_lab.common.security.AuthenticatedUser;
-import com.imfreco.bank_core_evolution_lab.movement.application.MovementService;
+import com.imfreco.bank_core_evolution_lab.movement.application.port.out.MovementRecorderPort;
 import com.imfreco.bank_core_evolution_lab.movement.domain.MovementType;
-import com.imfreco.bank_core_evolution_lab.outbox.application.OutboxService;
+import com.imfreco.bank_core_evolution_lab.outbox.application.port.out.OutboxEventCreatorPort;
+import com.imfreco.bank_core_evolution_lab.transfer.application.port.in.CreateTransferCommand;
+import com.imfreco.bank_core_evolution_lab.transfer.application.port.in.TransferResult;
+import com.imfreco.bank_core_evolution_lab.transfer.application.port.in.TransferUseCase;
+import com.imfreco.bank_core_evolution_lab.transfer.application.port.out.TransferRepositoryPort;
 import com.imfreco.bank_core_evolution_lab.transfer.domain.Transfer;
-import com.imfreco.bank_core_evolution_lab.transfer.infrastructure.TransferRepository;
-import com.imfreco.bank_core_evolution_lab.transfer.web.TransferRequest;
-import com.imfreco.bank_core_evolution_lab.transfer.web.TransferResponse;
-import java.security.Principal;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class TransferService {
+public class TransferService implements TransferUseCase {
 
     private static final String OPERATION_TYPE = "INTERNAL_TRANSFER";
     private static final String DESCRIPTION = "Transferencia interna";
 
-    private final AccountRepository accountRepository;
-    private final TransferRepository transferRepository;
-    private final MovementService movementService;
-    private final IdempotencyService idempotencyService;
-    private final AuditService auditService;
-    private final OutboxService outboxService;
-    private final BankMetrics bankMetrics;
+    private final AccountRepositoryPort accountRepository;
+    private final TransferRepositoryPort transferRepository;
+    private final MovementRecorderPort movementRecorder;
+    private final IdempotencyPort idempotency;
+    private final AuditRecorderPort auditRecorder;
+    private final OutboxEventCreatorPort outboxEventCreator;
+    private final BankMetricsPort bankMetrics;
 
     public TransferService(
-            AccountRepository accountRepository,
-            TransferRepository transferRepository,
-            MovementService movementService,
-            IdempotencyService idempotencyService,
-            AuditService auditService,
-            OutboxService outboxService,
-            BankMetrics bankMetrics) {
+            AccountRepositoryPort accountRepository,
+            TransferRepositoryPort transferRepository,
+            MovementRecorderPort movementRecorder,
+            IdempotencyPort idempotency,
+            AuditRecorderPort auditRecorder,
+            OutboxEventCreatorPort outboxEventCreator,
+            BankMetricsPort bankMetrics) {
         this.accountRepository = accountRepository;
         this.transferRepository = transferRepository;
-        this.movementService = movementService;
-        this.idempotencyService = idempotencyService;
-        this.auditService = auditService;
-        this.outboxService = outboxService;
+        this.movementRecorder = movementRecorder;
+        this.idempotency = idempotency;
+        this.auditRecorder = auditRecorder;
+        this.outboxEventCreator = outboxEventCreator;
         this.bankMetrics = bankMetrics;
     }
 
+    @Override
     @Transactional
-    public TransferResponse create(
-            TransferRequest request,
-            String idempotencyKey,
-            Principal principal,
-            String channel,
-            String correlationId) {
-        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+    public TransferResult create(CreateTransferCommand command) {
+        if (command.idempotencyKey() == null || command.idempotencyKey().isBlank()) {
             throw new InvalidTransferException("Idempotency-Key header is required");
         }
-        validateSourceAccountOwnershipBeforeIdempotency(request.sourceAccountNumber(), principal);
+        validateSourceAccountOwnershipBeforeIdempotency(
+                command.sourceAccountNumber(), command.actor());
 
-        String actor = ActorContext.actor(principal);
-
-        return idempotencyService
+        return idempotency
                 .findCompletedResponseOrCreateRecord(
-                        idempotencyKey.trim(), request, OPERATION_TYPE, TransferResponse.class)
-                .orElseGet(
-                        () ->
-                                executeNewTransfer(
-                                        request,
-                                        idempotencyKey.trim(),
-                                        principal,
-                                        actor,
-                                        channel,
-                                        correlationId));
+                        command.idempotencyKey().trim(),
+                        idempotencyPayload(command),
+                        OPERATION_TYPE,
+                        TransferResult.class)
+                .orElseGet(() -> executeNewTransfer(command, command.idempotencyKey().trim()));
     }
 
+    @Override
     @Transactional(readOnly = true)
-    public TransferResponse findByReference(String transferReference, Principal principal) {
+    public TransferResult findByReference(String transferReference, AuthenticatedActor actor) {
         Transfer transfer =
                 transferRepository
                         .findByTransferReference(transferReference)
@@ -109,22 +99,15 @@ public class TransferService {
                                 () ->
                                         new AccountNotFoundException(
                                                 transfer.getTargetAccountId().toString()));
-        ensureTransferCanBeViewedByCurrentActor(source, target, principal);
+        ensureTransferCanBeViewedByCurrentActor(source, target, actor);
         return toResponse(transfer, source, target);
     }
 
-    private TransferResponse executeNewTransfer(
-            TransferRequest request,
-            String idempotencyKey,
-            Principal principal,
-            String actor,
-            String channel,
-            String correlationId) {
+    private TransferResult executeNewTransfer(
+            CreateTransferCommand command, String idempotencyKey) {
         try {
-            TransferResponse response =
-                    transferAtomically(
-                            request, idempotencyKey, principal, actor, channel, correlationId);
-            idempotencyService.complete(idempotencyKey, response);
+            TransferResult response = transferAtomically(command, idempotencyKey);
+            idempotency.complete(idempotencyKey, response);
             bankMetrics.incrementSuccessfulTransfers();
             return response;
         } catch (DomainException exception) {
@@ -136,32 +119,27 @@ public class TransferService {
         }
     }
 
-    private TransferResponse transferAtomically(
-            TransferRequest request,
-            String idempotencyKey,
-            Principal principal,
-            String actor,
-            String channel,
-            String correlationId) {
-        if (request.sourceAccountNumber().equals(request.targetAccountNumber())) {
+    private TransferResult transferAtomically(
+            CreateTransferCommand command, String idempotencyKey) {
+        if (command.sourceAccountNumber().equals(command.targetAccountNumber())) {
             throw new InvalidTransferException("Source and target account must be different");
         }
 
         List<Account> lockedAccounts =
                 accountRepository.findAllByAccountNumberInForUpdate(
-                        List.of(request.sourceAccountNumber(), request.targetAccountNumber()));
+                        List.of(command.sourceAccountNumber(), command.targetAccountNumber()));
         Map<String, Account> accountsByNumber =
                 lockedAccounts.stream()
                         .collect(Collectors.toMap(Account::getAccountNumber, Function.identity()));
 
-        Account source = accountOrThrow(accountsByNumber, request.sourceAccountNumber());
-        Account target = accountOrThrow(accountsByNumber, request.targetAccountNumber());
+        Account source = accountOrThrow(accountsByNumber, command.sourceAccountNumber());
+        Account target = accountOrThrow(accountsByNumber, command.targetAccountNumber());
 
-        ensureSourceAccountCanBeDebitedByCurrentActor(source, principal);
+        ensureSourceAccountCanBeDebitedByCurrentActor(source, command.actor());
         source.ensureActive();
         target.ensureActive();
         if (source.getCurrency() != target.getCurrency()
-                || source.getCurrency() != request.currency()) {
+                || source.getCurrency() != command.currency()) {
             throw new CurrencyMismatchException();
         }
 
@@ -170,38 +148,38 @@ public class TransferService {
                         new Transfer(
                                 source.getId(),
                                 target.getId(),
-                                request.amount(),
-                                request.currency(),
+                                command.amount(),
+                                command.currency(),
                                 idempotencyKey));
 
-        source.debit(request.amount());
-        target.credit(request.amount());
+        source.debit(command.amount());
+        target.credit(command.amount());
 
-        movementService.create(
-                source, transfer.getId(), MovementType.DEBIT, request.amount(), DESCRIPTION);
-        movementService.create(
-                target, transfer.getId(), MovementType.CREDIT, request.amount(), DESCRIPTION);
+        movementRecorder.create(
+                source, transfer.getId(), MovementType.DEBIT, command.amount(), DESCRIPTION);
+        movementRecorder.create(
+                target, transfer.getId(), MovementType.CREDIT, command.amount(), DESCRIPTION);
 
         transfer.complete();
 
-        auditService.record(
+        auditRecorder.record(
                 "TRANSFER_COMPLETED",
                 "Transfer",
                 transfer.getTransferReference(),
-                actor,
-                channel,
-                correlationId,
+                command.actor().username(),
+                command.channel(),
+                command.correlationId(),
                 Map.of(
                         "sourceAccountId",
                         source.getId(),
                         "targetAccountId",
                         target.getId(),
                         "amount",
-                        request.amount(),
+                        command.amount(),
                         "currency",
-                        request.currency()));
+                        command.currency()));
 
-        outboxService.create(
+        outboxEventCreator.create(
                 "Transfer",
                 transfer.getTransferReference(),
                 "TransferCompleted",
@@ -213,13 +191,13 @@ public class TransferService {
                         "targetAccountId",
                         target.getId(),
                         "amount",
-                        request.amount(),
+                        command.amount(),
                         "currency",
-                        request.currency(),
+                        command.currency(),
                         "createdAt",
                         transfer.getCreatedAt(),
                         "correlationId",
-                        correlationId));
+                        command.correlationId()));
 
         return toResponse(transfer, source, target);
     }
@@ -233,89 +211,54 @@ public class TransferService {
     }
 
     private void validateSourceAccountOwnershipBeforeIdempotency(
-            String sourceAccountNumber, Principal principal) {
+            String sourceAccountNumber, AuthenticatedActor actor) {
         try {
             Account source =
                     accountRepository
                             .findByAccountNumber(sourceAccountNumber)
                             .orElseThrow(() -> new AccountNotFoundException(sourceAccountNumber));
-            ensureSourceAccountCanBeDebitedByCurrentActor(source, principal);
-        } catch (DomainException | AccessDeniedException exception) {
+            ensureSourceAccountCanBeDebitedByCurrentActor(source, actor);
+        } catch (DomainException exception) {
             bankMetrics.incrementFailedTransfers();
             throw exception;
         }
     }
 
     private void ensureSourceAccountCanBeDebitedByCurrentActor(
-            Account source, Principal principal) {
-        if (hasRole(principal, "ADMIN") || hasRole(principal, "OPERATOR")) {
+            Account source, AuthenticatedActor actor) {
+        if (actor != null && actor.isAdministrative()) {
             return;
         }
 
-        AuthenticatedUser user = authenticatedUser(principal);
-        if (user != null
-                && hasRole(principal, "CUSTOMER")
-                && source.getCustomerId().equals(user.customerId())) {
+        if (actor != null
+                && actor.hasRole("CUSTOMER")
+                && source.getCustomerId().equals(actor.customerId())) {
             return;
         }
 
-        throw new AccessDeniedException(
+        throw new ForbiddenOperationException(
                 "Authenticated customer cannot debit the requested source account");
     }
 
     private void ensureTransferCanBeViewedByCurrentActor(
-            Account source, Account target, Principal principal) {
-        if (hasRole(principal, "ADMIN") || hasRole(principal, "OPERATOR")) {
+            Account source, Account target, AuthenticatedActor actor) {
+        if (actor != null && actor.isAdministrative()) {
             return;
         }
 
-        AuthenticatedUser user = authenticatedUser(principal);
-        if (user != null
-                && hasRole(principal, "CUSTOMER")
-                && (source.getCustomerId().equals(user.customerId())
-                        || target.getCustomerId().equals(user.customerId()))) {
+        if (actor != null
+                && actor.hasRole("CUSTOMER")
+                && (source.getCustomerId().equals(actor.customerId())
+                        || target.getCustomerId().equals(actor.customerId()))) {
             return;
         }
 
-        throw new AccessDeniedException(
+        throw new ForbiddenOperationException(
                 "Authenticated customer cannot access the requested transfer");
     }
 
-    private boolean hasRole(Principal principal, String role) {
-        AuthenticatedUser user = authenticatedUser(principal);
-        if (user != null && user.roles().contains(role)) {
-            return true;
-        }
-
-        Authentication authentication = authentication(principal);
-        if (authentication == null) {
-            return false;
-        }
-        return authentication.getAuthorities().stream()
-                .anyMatch(authority -> ("ROLE_" + role).equals(authority.getAuthority()));
-    }
-
-    private AuthenticatedUser authenticatedUser(Principal principal) {
-        if (principal instanceof AuthenticatedUser user) {
-            return user;
-        }
-        Authentication authentication = authentication(principal);
-        if (authentication != null
-                && authentication.getPrincipal() instanceof AuthenticatedUser user) {
-            return user;
-        }
-        return null;
-    }
-
-    private Authentication authentication(Principal principal) {
-        if (principal instanceof Authentication authentication) {
-            return authentication;
-        }
-        return SecurityContextHolder.getContext().getAuthentication();
-    }
-
-    private TransferResponse toResponse(Transfer transfer, Account source, Account target) {
-        return new TransferResponse(
+    private TransferResult toResponse(Transfer transfer, Account source, Account target) {
+        return new TransferResult(
                 transfer.getTransferReference(),
                 transfer.getSourceAccountId(),
                 source.getAccountNumber(),
@@ -327,4 +270,18 @@ public class TransferService {
                 transfer.getCreatedAt(),
                 transfer.getCompletedAt());
     }
+
+    private TransferIdempotencyPayload idempotencyPayload(CreateTransferCommand command) {
+        return new TransferIdempotencyPayload(
+                command.sourceAccountNumber(),
+                command.targetAccountNumber(),
+                command.amount(),
+                command.currency());
+    }
+
+    private record TransferIdempotencyPayload(
+            String sourceAccountNumber,
+            String targetAccountNumber,
+            BigDecimal amount,
+            Currency currency) {}
 }

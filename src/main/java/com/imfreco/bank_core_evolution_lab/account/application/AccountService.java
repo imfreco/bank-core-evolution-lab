@@ -1,17 +1,17 @@
 package com.imfreco.bank_core_evolution_lab.account.application;
 
+import com.imfreco.bank_core_evolution_lab.account.application.port.in.AccountResult;
+import com.imfreco.bank_core_evolution_lab.account.application.port.in.AccountUseCase;
+import com.imfreco.bank_core_evolution_lab.account.application.port.in.BalanceResult;
+import com.imfreco.bank_core_evolution_lab.account.application.port.in.CreateAccountCommand;
+import com.imfreco.bank_core_evolution_lab.account.application.port.out.AccountRepositoryPort;
 import com.imfreco.bank_core_evolution_lab.account.domain.Account;
-import com.imfreco.bank_core_evolution_lab.account.infrastructure.AccountRepository;
-import com.imfreco.bank_core_evolution_lab.account.web.AccountMapper;
-import com.imfreco.bank_core_evolution_lab.account.web.AccountRequest;
-import com.imfreco.bank_core_evolution_lab.account.web.AccountResponse;
-import com.imfreco.bank_core_evolution_lab.account.web.BalanceResponse;
-import com.imfreco.bank_core_evolution_lab.audit.application.AuditService;
-import com.imfreco.bank_core_evolution_lab.common.config.BankMetrics;
+import com.imfreco.bank_core_evolution_lab.audit.application.port.out.AuditRecorderPort;
+import com.imfreco.bank_core_evolution_lab.common.application.port.out.BankMetricsPort;
 import com.imfreco.bank_core_evolution_lab.common.exception.AccountNotFoundException;
 import com.imfreco.bank_core_evolution_lab.common.exception.CustomerNotFoundException;
-import com.imfreco.bank_core_evolution_lab.customer.infrastructure.CustomerRepository;
-import com.imfreco.bank_core_evolution_lab.outbox.application.OutboxService;
+import com.imfreco.bank_core_evolution_lab.customer.application.port.out.CustomerRepositoryPort;
+import com.imfreco.bank_core_evolution_lab.outbox.application.port.out.OutboxEventCreatorPort;
 import java.security.SecureRandom;
 import java.util.Map;
 import java.util.UUID;
@@ -19,60 +19,63 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class AccountService {
+public class AccountService implements AccountUseCase {
 
-    private final AccountRepository accountRepository;
-    private final CustomerRepository customerRepository;
-    private final AuditService auditService;
-    private final OutboxService outboxService;
-    private final BankMetrics bankMetrics;
+    private final AccountRepositoryPort accountRepository;
+    private final CustomerRepositoryPort customerRepository;
+    private final AuditRecorderPort auditRecorder;
+    private final OutboxEventCreatorPort outboxEventCreator;
+    private final BankMetricsPort bankMetrics;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public AccountService(
-            AccountRepository accountRepository,
-            CustomerRepository customerRepository,
-            AuditService auditService,
-            OutboxService outboxService,
-            BankMetrics bankMetrics) {
+            AccountRepositoryPort accountRepository,
+            CustomerRepositoryPort customerRepository,
+            AuditRecorderPort auditRecorder,
+            OutboxEventCreatorPort outboxEventCreator,
+            BankMetricsPort bankMetrics) {
         this.accountRepository = accountRepository;
         this.customerRepository = customerRepository;
-        this.auditService = auditService;
-        this.outboxService = outboxService;
+        this.auditRecorder = auditRecorder;
+        this.outboxEventCreator = outboxEventCreator;
         this.bankMetrics = bankMetrics;
     }
 
+    @Override
     @Transactional
-    public AccountResponse create(AccountRequest request) {
-        if (!customerRepository.existsById(request.customerId())) {
-            throw new CustomerNotFoundException(request.customerId());
+    public AccountResult create(CreateAccountCommand command) {
+        if (!customerRepository.existsById(command.customerId())) {
+            throw new CustomerNotFoundException(command.customerId());
         }
         Account account =
                 new Account(
                         generateAccountNumber(),
-                        request.customerId(),
-                        request.type(),
-                        request.currency(),
-                        request.initialBalance());
-        return AccountMapper.toResponse(accountRepository.save(account));
+                        command.customerId(),
+                        command.type(),
+                        command.currency(),
+                        command.initialBalance());
+        return toResult(accountRepository.save(account));
     }
 
+    @Override
     @Transactional(readOnly = true)
-    public AccountResponse get(UUID accountId) {
-        return AccountMapper.toResponse(findAccount(accountId));
+    public AccountResult get(UUID accountId) {
+        return toResult(findAccount(accountId));
     }
 
+    @Override
     @Transactional(readOnly = true)
-    public BalanceResponse getBalance(UUID accountId) {
-        return AccountMapper.toBalanceResponse(findAccount(accountId));
+    public BalanceResult getBalance(UUID accountId) {
+        return toBalanceResult(findAccount(accountId));
     }
 
+    @Override
     @Transactional
-    public AccountResponse block(
-            UUID accountId, String actor, String channel, String correlationId) {
+    public AccountResult block(UUID accountId, String actor, String channel, String correlationId) {
         Account account = findAccount(accountId);
         boolean changed = account.block();
         if (changed) {
-            auditService.record(
+            auditRecorder.record(
                     "ACCOUNT_BLOCKED",
                     "Account",
                     account.getId().toString(),
@@ -84,7 +87,7 @@ public class AccountService {
                             account.getAccountNumber(),
                             "customerId",
                             account.getCustomerId()));
-            outboxService.create(
+            outboxEventCreator.create(
                     "Account",
                     account.getId().toString(),
                     "AccountBlocked",
@@ -99,7 +102,7 @@ public class AccountService {
                             correlationId));
             bankMetrics.incrementBlockedAccounts();
         }
-        return AccountMapper.toResponse(account);
+        return toResult(account);
     }
 
     public Account findAccount(UUID accountId) {
@@ -116,5 +119,29 @@ public class AccountService {
             }
         }
         throw new IllegalStateException("Could not generate unique account number");
+    }
+
+    private AccountResult toResult(Account account) {
+        return new AccountResult(
+                account.getId(),
+                account.getAccountNumber(),
+                account.getCustomerId(),
+                account.getType(),
+                account.getStatus(),
+                account.getCurrency(),
+                account.getAccountingBalance(),
+                account.getAvailableBalance(),
+                account.getVersion(),
+                account.getCreatedAt(),
+                account.getUpdatedAt());
+    }
+
+    private BalanceResult toBalanceResult(Account account) {
+        return new BalanceResult(
+                account.getId(),
+                account.getAccountNumber(),
+                account.getCurrency(),
+                account.getAccountingBalance(),
+                account.getAvailableBalance());
     }
 }

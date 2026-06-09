@@ -2,6 +2,7 @@ package com.imfreco.bank_core_evolution_lab.common.idempotency;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.imfreco.bank_core_evolution_lab.common.application.port.out.IdempotencyPort;
 import com.imfreco.bank_core_evolution_lab.common.exception.DuplicateIdempotencyKeyException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -12,7 +13,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 @Service
-public class IdempotencyService {
+public class IdempotencyService implements IdempotencyPort {
 
     private final IdempotencyRecordRepository repository;
     private final ObjectMapper objectMapper;
@@ -22,6 +23,7 @@ public class IdempotencyService {
         this.objectMapper = objectMapper;
     }
 
+    @Override
     public <T> Optional<T> findCompletedResponseOrCreateRecord(
             String idempotencyKey,
             Object requestBody,
@@ -54,6 +56,7 @@ public class IdempotencyService {
         return Optional.empty();
     }
 
+    @Override
     public void complete(String idempotencyKey, Object responseBody) {
         IdempotencyRecord record =
                 repository
@@ -65,6 +68,7 @@ public class IdempotencyService {
         record.complete(writeResponse(responseBody));
     }
 
+    @Override
     public String hashRequest(Object requestBody) {
         try {
             String canonicalJson = objectMapper.writeValueAsString(requestBody);

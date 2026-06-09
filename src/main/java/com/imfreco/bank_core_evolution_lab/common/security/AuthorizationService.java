@@ -1,6 +1,6 @@
 package com.imfreco.bank_core_evolution_lab.common.security;
 
-import com.imfreco.bank_core_evolution_lab.account.infrastructure.AccountRepository;
+import com.imfreco.bank_core_evolution_lab.account.application.port.out.AccountRepositoryPort;
 import java.util.UUID;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -9,9 +9,9 @@ import org.springframework.stereotype.Service;
 @Service("authorizationService")
 public class AuthorizationService {
 
-    private final AccountRepository accountRepository;
+    private final AccountRepositoryPort accountRepository;
 
-    public AuthorizationService(AccountRepository accountRepository) {
+    public AuthorizationService(AccountRepositoryPort accountRepository) {
         this.accountRepository = accountRepository;
     }
 

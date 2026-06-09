@@ -1,17 +1,20 @@
 package com.imfreco.bank_core_evolution_lab.movement.application;
 
+import com.imfreco.bank_core_evolution_lab.account.application.port.out.AccountRepositoryPort;
 import com.imfreco.bank_core_evolution_lab.account.domain.Account;
-import com.imfreco.bank_core_evolution_lab.account.infrastructure.AccountRepository;
 import com.imfreco.bank_core_evolution_lab.common.exception.AccountNotFoundException;
 import com.imfreco.bank_core_evolution_lab.common.exception.CustomerNotFoundException;
-import com.imfreco.bank_core_evolution_lab.customer.infrastructure.CustomerRepository;
+import com.imfreco.bank_core_evolution_lab.customer.application.port.out.CustomerRepositoryPort;
+import com.imfreco.bank_core_evolution_lab.movement.application.port.in.CustomerMovementViewResult;
+import com.imfreco.bank_core_evolution_lab.movement.application.port.in.MovementResult;
+import com.imfreco.bank_core_evolution_lab.movement.application.port.in.MovementUseCase;
+import com.imfreco.bank_core_evolution_lab.movement.application.port.out.MovementProjectionPort;
+import com.imfreco.bank_core_evolution_lab.movement.application.port.out.MovementRecorderPort;
+import com.imfreco.bank_core_evolution_lab.movement.application.port.out.MovementRepositoryPort;
 import com.imfreco.bank_core_evolution_lab.movement.domain.Movement;
 import com.imfreco.bank_core_evolution_lab.movement.domain.MovementType;
-import com.imfreco.bank_core_evolution_lab.movement.infrastructure.MovementRepository;
-import com.imfreco.bank_core_evolution_lab.movement.web.CustomerMovementViewResponse;
-import com.imfreco.bank_core_evolution_lab.movement.web.MovementResponse;
+import com.imfreco.bank_core_evolution_lab.transfer.application.port.out.TransferRepositoryPort;
 import com.imfreco.bank_core_evolution_lab.transfer.domain.Transfer;
-import com.imfreco.bank_core_evolution_lab.transfer.infrastructure.TransferRepository;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
@@ -23,27 +26,28 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class MovementService {
+public class MovementService implements MovementUseCase, MovementRecorderPort {
 
-    private final MovementRepository movementRepository;
-    private final AccountRepository accountRepository;
-    private final CustomerRepository customerRepository;
-    private final TransferRepository transferRepository;
-    private final MovementProjectionService movementProjectionService;
+    private final MovementRepositoryPort movementRepository;
+    private final AccountRepositoryPort accountRepository;
+    private final CustomerRepositoryPort customerRepository;
+    private final TransferRepositoryPort transferRepository;
+    private final MovementProjectionPort movementProjection;
 
     public MovementService(
-            MovementRepository movementRepository,
-            AccountRepository accountRepository,
-            CustomerRepository customerRepository,
-            TransferRepository transferRepository,
-            MovementProjectionService movementProjectionService) {
+            MovementRepositoryPort movementRepository,
+            AccountRepositoryPort accountRepository,
+            CustomerRepositoryPort customerRepository,
+            TransferRepositoryPort transferRepository,
+            MovementProjectionPort movementProjection) {
         this.movementRepository = movementRepository;
         this.accountRepository = accountRepository;
         this.customerRepository = customerRepository;
         this.transferRepository = transferRepository;
-        this.movementProjectionService = movementProjectionService;
+        this.movementProjection = movementProjection;
     }
 
+    @Override
     public Movement create(
             Account account,
             UUID transferId,
@@ -61,24 +65,26 @@ public class MovementService {
                         description));
     }
 
+    @Override
     @Transactional(readOnly = true)
-    public List<MovementResponse> findByAccount(UUID accountId) {
+    public List<MovementResult> findByAccount(UUID accountId) {
         if (!accountRepository.existsById(accountId)) {
             throw new AccountNotFoundException(accountId.toString());
         }
         return toResponses(movementRepository.findByAccountIdOrderByCreatedAtDesc(accountId));
     }
 
+    @Override
     @Transactional(readOnly = true)
-    public CustomerMovementViewResponse findByCustomer(UUID customerId) {
+    public CustomerMovementViewResult findByCustomer(UUID customerId) {
         if (!customerRepository.existsById(customerId)) {
             throw new CustomerNotFoundException(customerId);
         }
-        return movementProjectionService
+        return movementProjection
                 .findView(customerId)
                 .orElseGet(
                         () ->
-                                new CustomerMovementViewResponse(
+                                new CustomerMovementViewResult(
                                         customerId,
                                         findByCustomerFromSql(customerId),
                                         Instant.now(),
@@ -86,7 +92,7 @@ public class MovementService {
     }
 
     @Transactional(readOnly = true)
-    public List<MovementResponse> findByCustomerFromSql(UUID customerId) {
+    public List<MovementResult> findByCustomerFromSql(UUID customerId) {
         List<Account> accounts = accountRepository.findByCustomerId(customerId);
         List<UUID> accountIds = accounts.stream().map(Account::getId).toList();
         if (accountIds.isEmpty()) {
@@ -95,7 +101,7 @@ public class MovementService {
         return toResponses(movementRepository.findByAccountIdInOrderByCreatedAtDesc(accountIds));
     }
 
-    public List<MovementResponse> toResponses(Collection<Movement> movements) {
+    public List<MovementResult> toResponses(Collection<Movement> movements) {
         Map<UUID, Transfer> transfers =
                 transferRepository
                         .findAllById(
@@ -109,8 +115,8 @@ public class MovementService {
                 .toList();
     }
 
-    private MovementResponse toResponse(Movement movement, Transfer transfer) {
-        return new MovementResponse(
+    private MovementResult toResponse(Movement movement, Transfer transfer) {
+        return new MovementResult(
                 movement.getId(),
                 movement.getAccountId(),
                 transfer == null ? null : transfer.getTransferReference(),
